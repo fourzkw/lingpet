@@ -1,0 +1,4 @@
+interface:
+  display_name: "灵伴桌宠创作"
+  short_description: "从参考图或文字分阶段创作桌宠形象、动作及原图或像素资源"
+  default_prompt: "使用 $board-pet-creator，依据我的参考图或描述，在当前灵伴桌宠插件中分阶段创作形象和动作，先检查已配置的生成能力。"

@@ -1,0 +1,23 @@
+{
+  "method": "built-in image_gen",
+  "referenceRole": "user character identity + existing DeepSeek style/action atlas",
+  "atlas": "atlas.png",
+  "layout": {
+    "columns": 8,
+    "rows": 8,
+    "sourceWidth": 1254,
+    "sourceHeight": 1254,
+    "renderPixelSize": 128
+  },
+  "states": [
+    "idle",
+    "thinking",
+    "working",
+    "input",
+    "approval",
+    "done",
+    "error",
+    "sleep"
+  ],
+  "prompt": "Use case: stylized-concept. Asset type: production transparent pixel-art desktop pet sprite atlas. Inputs: reference 1 is the character identity (white-haired ChatGPT dragon woman); reference 2 is ONLY style/proportion/action layout reference (DeepSeek desktop pet contact sheet). Create ONE ChatGPT companion character atlas, exactly square 1024x1024 pixels, precisely 8 columns x 8 rows, each tile 128x128, no gutters, no borders, no labels. True transparent alpha background including between sprites, NO dark or white background and NO checkerboard painted in. Match reference 2's tiny 128px pixel art, dark pixel outlines, oversized round head, tiny fully clothed seated dumpling body, tiny round feet, face forward. Preserve reference 1's identity: very pale lavender-white long flowing hair, two ivory ridged dragon horns, lavender eyes, pointed ears, white elegant high-neck modest long dress with lilac shading and draping sleeves, small knotted flower ornaments, two small lavender batlike dragon wings, ONE curled pale dragon tail. Simplify costume for pixel legibility, no adult body proportions, no cleavage, no thigh emphasis. Same exact character and camera scale in every tile, body centered at x64 within each tile, baseline y116, transparent padding at least 8 pixels all sides including horns/wings/tail. 64 distinct coherent animation poses, 8 frames per row left-to-right: row1 idle: open eyes, small side glances, slight hair motion, half-blink, closed blink, eyes reopen, calm rest; row2 thinking: hand rises to chin then chin-rest pondering, small alternating eye changes; row3 working: small keyboard in front of feet, hands alternate pressing keys, head/hair/torso remain fixed; row4 waiting input: hand raises, tiny wave, wave, wave, smiles, hand lowers to rest; row5 approval: lift a tiny gold shield with lock motif and hold it, one blink, keep waiting; row6 done: seated rest, anticipation crouch, raise arms, tiny happy hop, peak smiling hop, lower, land, neutral seated recovery; row7 error: neutral, surprised face, hands to cheeks, brief concern, lower hands, calm recovery, neutral, neutral; row8 sleep: neutral, sleepy eyes, drooping head, eyes closed, tucked seated sleeping, tiny breathing variation, tiny breathing variation, tucked sleeping. Hard crisp pixel clusters, no blur, no gradients outside pixel shading, no drop shadow, no extra mascots, no text, every character fully inside its 128px tile. Most important: exact 8x8 regular atlas layout, matching petite seated silhouette and recognizability at small desktop size."
+}

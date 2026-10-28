@@ -1,0 +1,23 @@
+{
+  "method": "built-in image_gen",
+  "referenceRole": "user character identity + existing DeepSeek style/action atlas",
+  "atlas": "atlas.png",
+  "layout": {
+    "columns": 8,
+    "rows": 8,
+    "sourceWidth": 1254,
+    "sourceHeight": 1254,
+    "renderPixelSize": 128
+  },
+  "states": [
+    "idle",
+    "thinking",
+    "working",
+    "input",
+    "approval",
+    "done",
+    "error",
+    "sleep"
+  ],
+  "prompt": "Use case: stylized-concept. Production asset: transparent pixel art desktop pet animation atlas. Reference image 1 is the Gemini character identity. Reference image 2 is ONLY the pixel-art style/proportions and 8x8 action-sheet arrangement of the existing DeepSeek pet. Generate ONE square sprite atlas exactly 1024x1024, 8 equal columns and 8 equal rows, 64 tiles 128x128, NO gutters, NO borders, NO labels. Real alpha transparency everywhere outside characters, no painted background/checkerboard/shadows. Each character must be isolated within its own cell with 12px clear transparent padding at all four sides. Pixel artwork should occupy at most 104x104 per tile. Facing forward, oversized round head, tiny modest fully clothed seated dumpling body with round feet, huge expressive eyes, crisp dark pixel outline and limited pixel palette, exactly matching the reference DeepSeek pet in camera scale and cute proportions. Character identity: Gemini blue-to-violet and magenta long flowing hair, two blue-purple cat ears with pink inner ears, asymmetric eyes (one ruby-pink, one gold), small four-point rainbow star hair ornament, dark navy-purple full modest dress with white ruffled hem and gold star decorations, ONE fluffy blue-purple cat tail curved to the side. Preserve colorful star motifs, simplify costume to read at 128px, no adult body proportions, no bare midriff or cleavage, no extra characters. All tiles same camera and identity, head aligned within cell center, grounded at y116. Eight rows, each with eight coherent distinct frames left-to-right: row1 idle: rest, slight glance, slight glance, neutral, half blink, closed blink, open, rest. Row2 thinking: hand rises to chin then pondering, tiny eye changes, gently lower hand. Row3 working: tiny keyboard ahead of feet, alternate hands tapping keys; head hair and torso remain perfectly stationary, only hands change. Row4 waiting input: raise hand, wave tiny paw, wave, wave, smile, lower hand, rest, rest. Row5 approval: raise a tiny gold lock shield in front, hold, blink, hold. Row6 done: neutral, crouch anticipation, arms rise, tiny happy hop, peak joyful closed-eye hop, descend, land, return to neutral seated. Row7 error: neutral, surprised eyes, hands to cheeks, concern, lower hands, calm recover, neutral, neutral. Row8 sleep: neutral, sleepy eyelids, droop, close eyes, tuck into sleeping seated pose, breathe, breathe, sleep. Keep feet and full tail inside each tile. No text, no symbols outside tiles, no bright halo fringe, no background. Priority: regular 8x8 tile grid, 12px empty padding per tile, consistent adorable pixel companion identity."
+}

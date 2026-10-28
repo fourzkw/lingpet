@@ -1,0 +1,197 @@
+{
+  "schemaVersion": 1,
+  "character": "chatgpt-white-dragon-h3",
+  "projectId": "44184792-942d-4867-a3af-2cbc3c81af8e",
+  "visualInputSha256": "f5e00d084af84b0d4a1407e505dc0db3c14171fc0d7d40e261c801bf89921866",
+  "baseImage": "../base.png",
+  "imageGeneration": "user-approved built-in imagegen candidate v4",
+  "videoGeneration": "local ComfyUI MiniMax H3",
+  "videos": {
+    "idle": {
+      "promptId": "4a29f6d9-c6f5-431c-9b0d-9575131f79b7",
+      "sha256": "e61452c9cd7bdb5062ce397a86d12f9e33a7bb77deff4a97e0fc559884915d4a",
+      "inputSha256": "6e85c2ea117ed2b0ab8a17429515190f78801d0dc8213e3996689ee81b75b5bc",
+      "workflowHash": "cb0b371231d2df65e29a426ba46cadeabef0381a7fdbb8295e008d543d5f489c",
+      "model": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "clip": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "vae": "minimax_h3_video_vae_fp16.safetensors",
+      "prompt": "Exactly the SAME white-haired seated dragon chibi girl in the first frame. Preserve her enormous rounded head, tiny compact body, lavender eyes, tiny gentle smile, very long white hair with lavender shadows, TWO ivory curved dragon horns, pointed ears, silver knot hair ornament, TWO compact pale lavender membranous dragon wings, ONE white scaled dragon tail curling on viewer-right, white silver gown with knot ornaments, two SHORT naturally connected legs and small white ornamented shoes side by side pointing forward. Keep her exact face, proportions, clothing, hair and tail. Very gentle idle breathing with only a slight soft sway of hair tips and tail tip. ONE quick natural simultaneous blink of both eyes, immediately reopen to the original relaxed eye shape. Keep facial landmarks stable. Hands remain clasped near chest; legs and shoes stay in their original positions. Return smoothly to the exact starting pose. Locked static frontal camera and consistent smooth 2D anime illustration. Entire horns, hair, wings, hands, shoes and dragon tail stay fully within the same safe frame, with fixed character size and foot baseline. Never change or disconnect legs, turn toes inward, add limbs, merge hands, duplicate wings or tail, alter outfit or turn the dragon tail into a whale fluke. No camera movement, zoom, cuts or speech. Background stays perfectly FLAT SOLID GREEN #00AA00, no scenery, gradient, ground shadow, text or extra characters. Silent desktop pet animation."
+    },
+    "thinking": {
+      "promptId": "9386f491-ffd7-4e12-8c87-5293029e6f2a",
+      "sha256": "b45a72be4e95147eec8e3bbb63e5f4626ff197d95226d77095349ee7dc703485",
+      "inputSha256": "6e85c2ea117ed2b0ab8a17429515190f78801d0dc8213e3996689ee81b75b5bc",
+      "workflowHash": "2ffe672f0a5d691c92b5d3de88d04ba42121a85b6db76199733180d39f6a2bca",
+      "model": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "clip": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "vae": "minimax_h3_video_vae_fp16.safetensors",
+      "prompt": "Exactly the SAME white-haired seated dragon chibi girl in the first frame. Preserve her enormous rounded head, tiny compact body, lavender eyes, tiny gentle smile, very long white hair with lavender shadows, TWO ivory curved dragon horns, pointed ears, silver knot hair ornament, TWO compact pale lavender membranous dragon wings, ONE white scaled dragon tail curling on viewer-right, white silver gown with knot ornaments, two SHORT naturally connected legs and small white ornamented shoes side by side pointing forward. Keep her exact face, proportions, clothing, hair and tail. Slowly bring one small hand under her chin, a subtle thoughtful head tilt and small sideways eye glance. Hold the thinking pose with gentle breathing until the end. Keep lower body and shoes still. Do not return to neutral at the end. Locked static frontal camera and consistent smooth 2D anime illustration. Entire horns, hair, wings, hands, shoes and dragon tail stay fully within the same safe frame, with fixed character size and foot baseline. Never change or disconnect legs, turn toes inward, add limbs, merge hands, duplicate wings or tail, alter outfit or turn the dragon tail into a whale fluke. No camera movement, zoom, cuts or speech. Background stays perfectly FLAT SOLID GREEN #00AA00, no scenery, gradient, ground shadow, text or extra characters. Silent desktop pet animation."
+    },
+    "working": {
+      "promptId": "e294bcfd-2c29-42e6-af88-f5f41eb0dafd",
+      "sha256": "9b13ddf5b68d5f0b71fed641ce300d2aef8c220d9113e921c6267bfb9c0d1902",
+      "inputSha256": "6e85c2ea117ed2b0ab8a17429515190f78801d0dc8213e3996689ee81b75b5bc",
+      "workflowHash": "aa1b205ddbf463793c7c27a48483ec0eb28af7f952b3b9383de360be2e7a583a",
+      "model": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "clip": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "vae": "minimax_h3_video_vae_fp16.safetensors",
+      "prompt": "Exactly the SAME white-haired seated dragon chibi girl in the first frame. Preserve her enormous rounded head, tiny compact body, lavender eyes, tiny gentle smile, very long white hair with lavender shadows, TWO ivory curved dragon horns, pointed ears, silver knot hair ornament, TWO compact pale lavender membranous dragon wings, ONE white scaled dragon tail curling on viewer-right, white silver gown with knot ornaments, two SHORT naturally connected legs and small white ornamented shoes side by side pointing forward. Keep her exact face, proportions, clothing, hair and tail. A small simple floating keyboard appears directly in front of her lap above the shoes. Her two small hands alternate soft continuous typing. Head and torso remain calm. Keep typing at the end; no waving or bouncing. Keyboard stays below her face. Locked static frontal camera and consistent smooth 2D anime illustration. Entire horns, hair, wings, hands, shoes and dragon tail stay fully within the same safe frame, with fixed character size and foot baseline. Never change or disconnect legs, turn toes inward, add limbs, merge hands, duplicate wings or tail, alter outfit or turn the dragon tail into a whale fluke. No camera movement, zoom, cuts or speech. Background stays perfectly FLAT SOLID GREEN #00AA00, no scenery, gradient, ground shadow, text or extra characters. Silent desktop pet animation."
+    },
+    "input": {
+      "promptId": "61310d7d-c0b1-4341-ae3f-22300410f6d5",
+      "sha256": "7c7031a0192549d2e71a181310e5417e00f75414a5d541dbdcf24c0866cbb116",
+      "inputSha256": "6e85c2ea117ed2b0ab8a17429515190f78801d0dc8213e3996689ee81b75b5bc",
+      "workflowHash": "203049c2c5f5e1b578e5bf5a0618277414abe744743f798babe1554cb7e513c6",
+      "model": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "clip": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "vae": "minimax_h3_video_vae_fp16.safetensors",
+      "prompt": "Exactly the SAME white-haired seated dragon chibi girl in the first frame. Preserve her enormous rounded head, tiny compact body, lavender eyes, tiny gentle smile, very long white hair with lavender shadows, TWO ivory curved dragon horns, pointed ears, silver knot hair ornament, TWO compact pale lavender membranous dragon wings, ONE white scaled dragon tail curling on viewer-right, white silver gown with knot ornaments, two SHORT naturally connected legs and small white ornamented shoes side by side pointing forward. Keep her exact face, proportions, clothing, hair and tail. One small hand gently lifts beside her cheek and gives two small inviting waves, smiling softly. Lower the hand back into the original clasped starting pose. Keep both shoes in place. Return smoothly to the exact first pose. Locked static frontal camera and consistent smooth 2D anime illustration. Entire horns, hair, wings, hands, shoes and dragon tail stay fully within the same safe frame, with fixed character size and foot baseline. Never change or disconnect legs, turn toes inward, add limbs, merge hands, duplicate wings or tail, alter outfit or turn the dragon tail into a whale fluke. No camera movement, zoom, cuts or speech. Background stays perfectly FLAT SOLID GREEN #00AA00, no scenery, gradient, ground shadow, text or extra characters. Silent desktop pet animation."
+    },
+    "approval": {
+      "promptId": "34f1350c-a40b-40b3-b6e1-7eec58a30611",
+      "sha256": "a99bb5544ac580b7fa3ec4efe1918015785c92fd8930ac4e43f4a7aec2646e55",
+      "inputSha256": "6e85c2ea117ed2b0ab8a17429515190f78801d0dc8213e3996689ee81b75b5bc",
+      "workflowHash": "64308069f52ba25b43d56a236b952916131beed70d0bdfb799a5547ebd1ae666",
+      "model": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "clip": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "vae": "minimax_h3_video_vae_fp16.safetensors",
+      "prompt": "Exactly the SAME white-haired seated dragon chibi girl in the first frame. Preserve her enormous rounded head, tiny compact body, lavender eyes, tiny gentle smile, very long white hair with lavender shadows, TWO ivory curved dragon horns, pointed ears, silver knot hair ornament, TWO compact pale lavender membranous dragon wings, ONE white scaled dragon tail curling on viewer-right, white silver gown with knot ornaments, two SHORT naturally connected legs and small white ornamented shoes side by side pointing forward. Keep her exact face, proportions, clothing, hair and tail. Her two hands lift and hold one small amber shield with a simple dark keyhole motif in front of her chest below the face. Calm patient expression and faint breathing. End steadily holding the shield, no disappearing prop and no checkmark. Locked static frontal camera and consistent smooth 2D anime illustration. Entire horns, hair, wings, hands, shoes and dragon tail stay fully within the same safe frame, with fixed character size and foot baseline. Never change or disconnect legs, turn toes inward, add limbs, merge hands, duplicate wings or tail, alter outfit or turn the dragon tail into a whale fluke. No camera movement, zoom, cuts or speech. Background stays perfectly FLAT SOLID GREEN #00AA00, no scenery, gradient, ground shadow, text or extra characters. Silent desktop pet animation."
+    },
+    "done": {
+      "promptId": "436dd638-2a64-42d7-8fd0-2a453bbafad2",
+      "sha256": "4b29ca8c7c95e64dcff05ce4cbe47dafd847d1dfcf012767faa6570b7a96d439",
+      "inputSha256": "6e85c2ea117ed2b0ab8a17429515190f78801d0dc8213e3996689ee81b75b5bc",
+      "workflowHash": "381902376fd26c284abe3a568bf40ee543d6f71e85a202e35f1688f09b1a8431",
+      "model": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "clip": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "vae": "minimax_h3_video_vae_fp16.safetensors",
+      "prompt": "Exactly the SAME white-haired seated dragon chibi girl in the first frame. Preserve her enormous rounded head, tiny compact body, lavender eyes, tiny gentle smile, very long white hair with lavender shadows, TWO ivory curved dragon horns, pointed ears, silver knot hair ornament, TWO compact pale lavender membranous dragon wings, ONE white scaled dragon tail curling on viewer-right, white silver gown with knot ornaments, two SHORT naturally connected legs and small white ornamented shoes side by side pointing forward. Keep her exact face, proportions, clothing, hair and tail. One gentle happy smile and a small celebratory lift of both hands beside the cheeks. Then lower them and settle back into the original clasped pose. Remain seated with shoes still, no jumping, no confetti. Return smoothly to the exact initial pose. Locked static frontal camera and consistent smooth 2D anime illustration. Entire horns, hair, wings, hands, shoes and dragon tail stay fully within the same safe frame, with fixed character size and foot baseline. Never change or disconnect legs, turn toes inward, add limbs, merge hands, duplicate wings or tail, alter outfit or turn the dragon tail into a whale fluke. No camera movement, zoom, cuts or speech. Background stays perfectly FLAT SOLID GREEN #00AA00, no scenery, gradient, ground shadow, text or extra characters. Silent desktop pet animation."
+    },
+    "error": {
+      "promptId": "be6fbb52-c8cf-4a6c-b67a-c89b26186822",
+      "sha256": "2df7e72c29764385fb06277a36056e21366710ac4d3e62cbc9ce3b049cea8c8a",
+      "inputSha256": "6e85c2ea117ed2b0ab8a17429515190f78801d0dc8213e3996689ee81b75b5bc",
+      "workflowHash": "065dd9588ff530056459c6be56b1daafe338f87acbd1d349a4891904e2e7c1c6",
+      "model": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "clip": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "vae": "minimax_h3_video_vae_fp16.safetensors",
+      "prompt": "Exactly the SAME white-haired seated dragon chibi girl in the first frame. Preserve her enormous rounded head, tiny compact body, lavender eyes, tiny gentle smile, very long white hair with lavender shadows, TWO ivory curved dragon horns, pointed ears, silver knot hair ornament, TWO compact pale lavender membranous dragon wings, ONE white scaled dragon tail curling on viewer-right, white silver gown with knot ornaments, two SHORT naturally connected legs and small white ornamented shoes side by side pointing forward. Keep her exact face, proportions, clothing, hair and tail. Brief mild surprise: her small hands lift toward her cheeks and eyebrows rise slightly, then she calms down and lowers hands to the original clasped pose. No extreme face distortion, crying or shaking. Remain seated. Return smoothly to the exact initial pose. Locked static frontal camera and consistent smooth 2D anime illustration. Entire horns, hair, wings, hands, shoes and dragon tail stay fully within the same safe frame, with fixed character size and foot baseline. Never change or disconnect legs, turn toes inward, add limbs, merge hands, duplicate wings or tail, alter outfit or turn the dragon tail into a whale fluke. No camera movement, zoom, cuts or speech. Background stays perfectly FLAT SOLID GREEN #00AA00, no scenery, gradient, ground shadow, text or extra characters. Silent desktop pet animation."
+    },
+    "sleep": {
+      "promptId": "2ddd2a20-25be-413d-b365-04da5aad2f63",
+      "sha256": "2123f548f70d22f7d725fb88216381daad6e94383b1c7d2246991810f0ce6409",
+      "inputSha256": "6e85c2ea117ed2b0ab8a17429515190f78801d0dc8213e3996689ee81b75b5bc",
+      "workflowHash": "5dfd5b15445b571ebc91f42501da8b355366142259a6ccdfe2a98eb174c524d1",
+      "model": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "clip": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "vae": "minimax_h3_video_vae_fp16.safetensors",
+      "prompt": "Exactly the SAME white-haired seated dragon chibi girl in the first frame. Preserve her enormous rounded head, tiny compact body, lavender eyes, tiny gentle smile, very long white hair with lavender shadows, TWO ivory curved dragon horns, pointed ears, silver knot hair ornament, TWO compact pale lavender membranous dragon wings, ONE white scaled dragon tail curling on viewer-right, white silver gown with knot ornaments, two SHORT naturally connected legs and small white ornamented shoes side by side pointing forward. Keep her exact face, proportions, clothing, hair and tail. Slowly close BOTH eyes fully and relax her hands on the lap. A tiny comfortable head tilt, then stay asleep with faint breathing. Both eyes remain fully shut for the rest of the video, never reopen them. End in a stable seated sleeping pose. Locked static frontal camera and consistent smooth 2D anime illustration. Entire horns, hair, wings, hands, shoes and dragon tail stay fully within the same safe frame, with fixed character size and foot baseline. Never change or disconnect legs, turn toes inward, add limbs, merge hands, duplicate wings or tail, alter outfit or turn the dragon tail into a whale fluke. No camera movement, zoom, cuts or speech. Background stays perfectly FLAT SOLID GREEN #00AA00, no scenery, gradient, ground shadow, text or extra characters. Silent desktop pet animation."
+    }
+  },
+  "processing": {
+    "projectId": "44184792-942d-4867-a3af-2cbc3c81af8e",
+    "clips": {
+      "idle": {
+        "assetId": "74373568-8829-4059-8dfe-5f61795ac678",
+        "startFrame": 0,
+        "loop": true,
+        "loopFrom": 0,
+        "pingPong": false
+      },
+      "thinking": {
+        "assetId": "42c47bfa-6d2f-4846-85b3-b331cbc2ee01",
+        "startFrame": 0,
+        "loop": true,
+        "loopFrom": 42,
+        "pingPong": true
+      },
+      "working": {
+        "assetId": "50aa403d-cdc8-4810-898e-9413cf4f0299",
+        "startFrame": 20,
+        "loop": true,
+        "loopFrom": 0,
+        "pingPong": false
+      },
+      "input": {
+        "assetId": "5317da3e-d646-4074-bb7b-e36b2f8bef74",
+        "startFrame": 0,
+        "loop": true,
+        "loopFrom": 0,
+        "pingPong": false
+      },
+      "approval": {
+        "assetId": "a7c21f66-7800-4141-a710-dddc1516cae0",
+        "startFrame": 0,
+        "loop": true,
+        "loopFrom": 42,
+        "pingPong": true
+      },
+      "done": {
+        "assetId": "dbe5d4bb-504a-4a0b-9e90-190ff041e33c",
+        "startFrame": 0,
+        "loop": false,
+        "loopFrom": 0,
+        "pingPong": false
+      },
+      "error": {
+        "assetId": "e84a5628-aa8c-4229-9375-ba9a4efffc37",
+        "startFrame": 0,
+        "loop": false,
+        "loopFrom": 0,
+        "pingPong": false
+      },
+      "sleep": {
+        "assetId": "082ab69d-c1ed-4115-becc-8184f562cca0",
+        "startFrame": 0,
+        "loop": true,
+        "loopFrom": 42,
+        "pingPong": true
+      }
+    },
+    "variants": [
+      "original",
+      "pixel"
+    ],
+    "background": "chroma",
+    "keyColor": [
+      0,
+      170,
+      0
+    ],
+    "threshold": 30,
+    "feather": 40,
+    "despill": true,
+    "spillTolerance": 10,
+    "fps": 12,
+    "originalSize": 384,
+    "pixelSize": 192,
+    "padding": 12,
+    "colors": 64,
+    "alphaThreshold": 160
+  },
+  "processorSha256": "461c90b8d045e91cb005737cf2aebe3597972a5ffff899e0c5c23a22e61345b0",
+  "playbackOverrides": {
+    "idle": {
+      "frameDurations": {
+        "14": 25,
+        "15": 25,
+        "16": 25,
+        "17": 25,
+        "18": 25,
+        "19": 25,
+        "20": 25,
+        "21": 25,
+        "22": 25,
+        "23": 25,
+        "24": 25,
+        "25": 25
+      },
+      "reason": "Compress generated slow blink to a short bilateral blink without painting over the face."
+    }
+  },
+  "legacyAssets": {
+    "assets/chatgpt/actions-v1/atlas.png": "eca5092dde1b00404ed3c808d705710dd9abe84fe3cc521b1fbc2c20af8bd083"
+  },
+  "reusedPreviousAnimationAssets": false,
+  "createdAt": "2026-10-25T15:02:16.039Z"
+}

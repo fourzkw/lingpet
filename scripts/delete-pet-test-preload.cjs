@@ -1,0 +1,2 @@
+const {contextBridge,ipcRenderer}=require('electron');
+contextBridge.exposeInMainWorld('pet',{get:()=>ipcRenderer.invoke('fixture:get'),manage:body=>ipcRenderer.invoke('fixture:manage',body),settings:patch=>ipcRenderer.invoke('fixture:settings',patch),onUpdate:fn=>ipcRenderer.on('fixture:update',(_e,value)=>fn(value)),demo:()=>ipcRenderer.invoke('fixture:get'),select:()=>ipcRenderer.invoke('fixture:get')});

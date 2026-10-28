@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 1,
+  "character": "deepseek-h3",
+  "projectId": "c0abbbce-2096-45b3-9c5a-8d3db4581d53",
+  "visualInputSha256": "76470d6482345cca4f1984af384202457288574c0b0ae52ce65403ca1444310e",
+  "baseImage": "../base.png",
+  "imageGeneration": false,
+  "videoGeneration": "local ComfyUI MiniMax H3",
+  "videos": {
+    "idle": {
+      "promptId": "925bf05d-1d76-4e08-9183-1c173db3f4b8",
+      "sha256": "48782a1f9093e9d303ff9588ed557aa9b10675fd35f5b4fd3f4b965c4e67bcdb",
+      "inputSha256": "a521488736fdc70105b0f435315352a6f8c8656e14933b0243a1e3538baa7bbc",
+      "workflowHash": "60935758a53a72652d7dfef044962cd733c8e421c92096a5e8974fe79b75bf32",
+      "model": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "clip": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "vae": "minimax_h3_video_vae_fp16.safetensors",
+      "prompt": "Exactly the SAME seated DeepSeek whale-maid chibi girl shown in the first frame. Enormous rounded head and tiny seated dumpling body, long dark indigo-to-cyan hair spreading near the feet, relaxed blue eyes, small playful smile, white ruffled maid headband, fin-shaped side ears, blue bow, navy maid dress with white apron, two white mitten hands, two small white feet side by side pointing forward, ONE blue whale tail on viewer-right with the same TWO-LOBED WHALE FLUKE. Preserve her exact face, outfit and proportions. A very gentle idle: tiny natural breathing, a slight soft sway only at the hair tips and whale-tail tip. Exactly ONE quick natural simultaneous blink, then promptly return to the same relaxed half-lidded eyes. Blink lasts a fraction of a second, eyes keep identical size and position, no eyelid distortion. Both hands and feet remain at the starting positions. Return smoothly to the exact initial pose. Locked static front-facing camera, consistent smooth 2D anime illustration, no pixel art or 3D. Entire head, headband, hair, hands, feet and whale fluke stay fully inside the frame with the same scale and baseline. Do not stretch or squash the body, change eye shape, shorten the hair, duplicate appendages, rotate feet inward, add legs or turn the whale tail into a spiral. Background stays perfectly FLAT SOLID GREEN #00AA00 throughout, no scenery, gradient, ground shadow, text, extra symbols or characters. No camera movement, zoom, cuts or speech. Silent desktop pet animation."
+    },
+    "thinking": {
+      "promptId": "d8eaf8f7-49a0-43b7-8faf-e6f304fc7b50",
+      "sha256": "ff9a60a5440526ff4d175fb23f62b4969969b1381f0dea21e44e1acf556d9b45",
+      "inputSha256": "a521488736fdc70105b0f435315352a6f8c8656e14933b0243a1e3538baa7bbc",
+      "workflowHash": "893daec201935ebb65fa92cfc7c19f57e4a45bd50e17bca271107b154d61ed75",
+      "model": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "clip": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "vae": "minimax_h3_video_vae_fp16.safetensors",
+      "prompt": "Exactly the SAME seated DeepSeek whale-maid chibi girl shown in the first frame. Enormous rounded head and tiny seated dumpling body, long dark indigo-to-cyan hair spreading near the feet, relaxed blue eyes, small playful smile, white ruffled maid headband, fin-shaped side ears, blue bow, navy maid dress with white apron, two white mitten hands, two small white feet side by side pointing forward, ONE blue whale tail on viewer-right with the same TWO-LOBED WHALE FLUKE. Preserve her exact face, outfit and proportions. One little mitten hand slowly moves to rest under her chin. A subtle thoughtful head tilt and small sideways eye glance. Hold the thinking pose with faint breathing through the end. Keep both feet and lower body still. Do not return to the neutral pose at the end. Locked static front-facing camera, consistent smooth 2D anime illustration, no pixel art or 3D. Entire head, headband, hair, hands, feet and whale fluke stay fully inside the frame with the same scale and baseline. Do not stretch or squash the body, change eye shape, shorten the hair, duplicate appendages, rotate feet inward, add legs or turn the whale tail into a spiral. Background stays perfectly FLAT SOLID GREEN #00AA00 throughout, no scenery, gradient, ground shadow, text, extra symbols or characters. No camera movement, zoom, cuts or speech. Silent desktop pet animation."
+    },
+    "working": {
+      "promptId": "419ebc42-1cda-4564-9bee-83d5b311801c",
+      "sha256": "4916796ef5a48354f208a697619e1a7f1a349fae9129135487c098ff39c7f650",
+      "inputSha256": "a521488736fdc70105b0f435315352a6f8c8656e14933b0243a1e3538baa7bbc",
+      "workflowHash": "3ab5f117705b3bdfc29baab55a899dc1cff491b94ba94dd4c1c01b718b197fe9",
+      "model": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "clip": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "vae": "minimax_h3_video_vae_fp16.safetensors",
+      "prompt": "Exactly the SAME seated DeepSeek whale-maid chibi girl shown in the first frame. Enormous rounded head and tiny seated dumpling body, long dark indigo-to-cyan hair spreading near the feet, relaxed blue eyes, small playful smile, white ruffled maid headband, fin-shaped side ears, blue bow, navy maid dress with white apron, two white mitten hands, two small white feet side by side pointing forward, ONE blue whale tail on viewer-right with the same TWO-LOBED WHALE FLUKE. Preserve her exact face, outfit and proportions. A small simple floating keyboard appears directly in front of her lap above the feet. Both mitten hands move to it and alternate soft continuous typing. Her head and upper torso stay calm and nearly still. End still typing on the keyboard. No waving or bouncing. Locked static front-facing camera, consistent smooth 2D anime illustration, no pixel art or 3D. Entire head, headband, hair, hands, feet and whale fluke stay fully inside the frame with the same scale and baseline. Do not stretch or squash the body, change eye shape, shorten the hair, duplicate appendages, rotate feet inward, add legs or turn the whale tail into a spiral. Background stays perfectly FLAT SOLID GREEN #00AA00 throughout, no scenery, gradient, ground shadow, text, extra symbols or characters. No camera movement, zoom, cuts or speech. Silent desktop pet animation."
+    },
+    "input": {
+      "promptId": "eba72bfa-9807-4386-9360-50509af9b605",
+      "sha256": "d8a26fe9c1fc2108fa8850a35660d1a9fa4d4c669fe14a921b5a10d66d02c115",
+      "inputSha256": "a521488736fdc70105b0f435315352a6f8c8656e14933b0243a1e3538baa7bbc",
+      "workflowHash": "67b8222ab6807984e1a59de7246be43295f36f723ecaa8ebefb4423411d3b0e3",
+      "model": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "clip": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "vae": "minimax_h3_video_vae_fp16.safetensors",
+      "prompt": "Exactly the SAME seated DeepSeek whale-maid chibi girl shown in the first frame. Enormous rounded head and tiny seated dumpling body, long dark indigo-to-cyan hair spreading near the feet, relaxed blue eyes, small playful smile, white ruffled maid headband, fin-shaped side ears, blue bow, navy maid dress with white apron, two white mitten hands, two small white feet side by side pointing forward, ONE blue whale tail on viewer-right with the same TWO-LOBED WHALE FLUKE. Preserve her exact face, outfit and proportions. One little mitten hand lifts beside her cheek and gives two small friendly inviting waves with a gentle smile. Lower it calmly back to the exact starting pose. Feet stay still. Return smoothly to the initial pose. Locked static front-facing camera, consistent smooth 2D anime illustration, no pixel art or 3D. Entire head, headband, hair, hands, feet and whale fluke stay fully inside the frame with the same scale and baseline. Do not stretch or squash the body, change eye shape, shorten the hair, duplicate appendages, rotate feet inward, add legs or turn the whale tail into a spiral. Background stays perfectly FLAT SOLID GREEN #00AA00 throughout, no scenery, gradient, ground shadow, text, extra symbols or characters. No camera movement, zoom, cuts or speech. Silent desktop pet animation."
+    },
+    "approval": {
+      "promptId": "0d553ff7-e496-4e1b-826d-f5fd80747ad3",
+      "sha256": "d0fceff916c488225e8f2f4254a102891b04509683dbe18a0bf4d05614bb5631",
+      "inputSha256": "a521488736fdc70105b0f435315352a6f8c8656e14933b0243a1e3538baa7bbc",
+      "workflowHash": "9bb4fc8cb8534091c7943e17739f96d1fb2130abcf1b53aba1275f31c14f502e",
+      "model": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "clip": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "vae": "minimax_h3_video_vae_fp16.safetensors",
+      "prompt": "Exactly the SAME seated DeepSeek whale-maid chibi girl shown in the first frame. Enormous rounded head and tiny seated dumpling body, long dark indigo-to-cyan hair spreading near the feet, relaxed blue eyes, small playful smile, white ruffled maid headband, fin-shaped side ears, blue bow, navy maid dress with white apron, two white mitten hands, two small white feet side by side pointing forward, ONE blue whale tail on viewer-right with the same TWO-LOBED WHALE FLUKE. Preserve her exact face, outfit and proportions. Both little mitten hands lift and hold ONE SMALL AMBER SHIELD with a dark KEYHOLE motif in front of her chest below her face. Calm patient expression, gentle breathing. Keep holding the shield steadily at the end. No checkmark and no disappearing shield. Locked static front-facing camera, consistent smooth 2D anime illustration, no pixel art or 3D. Entire head, headband, hair, hands, feet and whale fluke stay fully inside the frame with the same scale and baseline. Do not stretch or squash the body, change eye shape, shorten the hair, duplicate appendages, rotate feet inward, add legs or turn the whale tail into a spiral. Background stays perfectly FLAT SOLID GREEN #00AA00 throughout, no scenery, gradient, ground shadow, text, extra symbols or characters. No camera movement, zoom, cuts or speech. Silent desktop pet animation."
+    },
+    "done": {
+      "promptId": "0d702a60-ba79-4837-b1ca-4658c810358b",
+      "sha256": "2f9e8c0d17fa9f095996d0074abc95632efc80c111323f32fae92156e677cbe8",
+      "inputSha256": "a521488736fdc70105b0f435315352a6f8c8656e14933b0243a1e3538baa7bbc",
+      "workflowHash": "2a70c2b13f89d095caf9f0bb56010dc2cc53112a1689c3f8708ee219050ac584",
+      "model": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "clip": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "vae": "minimax_h3_video_vae_fp16.safetensors",
+      "prompt": "Exactly the SAME seated DeepSeek whale-maid chibi girl shown in the first frame. Enormous rounded head and tiny seated dumpling body, long dark indigo-to-cyan hair spreading near the feet, relaxed blue eyes, small playful smile, white ruffled maid headband, fin-shaped side ears, blue bow, navy maid dress with white apron, two white mitten hands, two small white feet side by side pointing forward, ONE blue whale tail on viewer-right with the same TWO-LOBED WHALE FLUKE. Preserve her exact face, outfit and proportions. A warm happy smile and one gentle celebratory lift of both little mitten hands beside her cheeks, then lower them and settle back to the exact starting pose. Remain seated, no jumping or leg movement. No confetti or special effects. Locked static front-facing camera, consistent smooth 2D anime illustration, no pixel art or 3D. Entire head, headband, hair, hands, feet and whale fluke stay fully inside the frame with the same scale and baseline. Do not stretch or squash the body, change eye shape, shorten the hair, duplicate appendages, rotate feet inward, add legs or turn the whale tail into a spiral. Background stays perfectly FLAT SOLID GREEN #00AA00 throughout, no scenery, gradient, ground shadow, text, extra symbols or characters. No camera movement, zoom, cuts or speech. Silent desktop pet animation."
+    },
+    "error": {
+      "promptId": "40feb53c-e3ab-4edb-a7fe-dce5299304bc",
+      "sha256": "573ec172e5e5095a670127bbaf3f16826f05bd522b4914b43bc21696d26a2f5c",
+      "inputSha256": "a521488736fdc70105b0f435315352a6f8c8656e14933b0243a1e3538baa7bbc",
+      "workflowHash": "6e789ba05d3966f15101bb9a6dae974eab0d5830ff2f6cc6768f5693b5deaf38",
+      "model": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "clip": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "vae": "minimax_h3_video_vae_fp16.safetensors",
+      "prompt": "Exactly the SAME seated DeepSeek whale-maid chibi girl shown in the first frame. Enormous rounded head and tiny seated dumpling body, long dark indigo-to-cyan hair spreading near the feet, relaxed blue eyes, small playful smile, white ruffled maid headband, fin-shaped side ears, blue bow, navy maid dress with white apron, two white mitten hands, two small white feet side by side pointing forward, ONE blue whale tail on viewer-right with the same TWO-LOBED WHALE FLUKE. Preserve her exact face, outfit and proportions. Brief mild surprise: little mitten hands lift towards her cheeks, eyebrows rise slightly, then hands lower and she calmly returns to her small initial smile. Keep the face and eye sizes stable, no extreme grimace, no crying or prolonged shaking. Remain seated. Locked static front-facing camera, consistent smooth 2D anime illustration, no pixel art or 3D. Entire head, headband, hair, hands, feet and whale fluke stay fully inside the frame with the same scale and baseline. Do not stretch or squash the body, change eye shape, shorten the hair, duplicate appendages, rotate feet inward, add legs or turn the whale tail into a spiral. Background stays perfectly FLAT SOLID GREEN #00AA00 throughout, no scenery, gradient, ground shadow, text, extra symbols or characters. No camera movement, zoom, cuts or speech. Silent desktop pet animation."
+    },
+    "sleep": {
+      "promptId": "be00756b-6f3f-484a-ab57-ad630ebc3e15",
+      "sha256": "b384905f892b18e9b70bf03ca85ba7a917ed1a2bf1868a70bccfadfc7f13c4d5",
+      "inputSha256": "a521488736fdc70105b0f435315352a6f8c8656e14933b0243a1e3538baa7bbc",
+      "workflowHash": "296e06b241f837d1d98fce74f1b631942c980d8b1d859ccc96cf9716dfc5f808",
+      "model": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "clip": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "vae": "minimax_h3_video_vae_fp16.safetensors",
+      "prompt": "Exactly the SAME seated DeepSeek whale-maid chibi girl shown in the first frame. Enormous rounded head and tiny seated dumpling body, long dark indigo-to-cyan hair spreading near the feet, relaxed blue eyes, small playful smile, white ruffled maid headband, fin-shaped side ears, blue bow, navy maid dress with white apron, two white mitten hands, two small white feet side by side pointing forward, ONE blue whale tail on viewer-right with the same TWO-LOBED WHALE FLUKE. Preserve her exact face, outfit and proportions. Slowly close BOTH eyes fully, relax the mitten hands at the lap, and let the head tilt a little in a comfortable seated doze. After closing, eyes remain fully shut for the rest of the video. End in a stable sleeping pose with faint breathing. Never reopen the eyes or return to the awake first pose. Locked static front-facing camera, consistent smooth 2D anime illustration, no pixel art or 3D. Entire head, headband, hair, hands, feet and whale fluke stay fully inside the frame with the same scale and baseline. Do not stretch or squash the body, change eye shape, shorten the hair, duplicate appendages, rotate feet inward, add legs or turn the whale tail into a spiral. Background stays perfectly FLAT SOLID GREEN #00AA00 throughout, no scenery, gradient, ground shadow, text, extra symbols or characters. No camera movement, zoom, cuts or speech. Silent desktop pet animation."
+    }
+  },
+  "processing": {
+    "projectId": "c0abbbce-2096-45b3-9c5a-8d3db4581d53",
+    "clips": {
+      "idle": {
+        "assetId": "5449f9d8-5867-4ffc-9313-7c2e2e90bcde",
+        "startFrame": 0,
+        "loop": true,
+        "loopFrom": 0,
+        "pingPong": false
+      },
+      "thinking": {
+        "assetId": "83eb145e-eb95-4c01-ad7d-be6dee7eabb9",
+        "startFrame": 0,
+        "loop": true,
+        "loopFrom": 42,
+        "pingPong": true
+      },
+      "working": {
+        "assetId": "fb92b9c2-d806-4631-bbdc-d76f44ed2abe",
+        "startFrame": 20,
+        "loop": true,
+        "loopFrom": 0,
+        "pingPong": false
+      },
+      "input": {
+        "assetId": "53dc7736-9486-436d-95b7-edeaedcb5a2a",
+        "startFrame": 0,
+        "loop": true,
+        "loopFrom": 0,
+        "pingPong": false
+      },
+      "approval": {
+        "assetId": "693820fe-0228-4379-bf1c-06c8b08def1d",
+        "startFrame": 0,
+        "loop": true,
+        "loopFrom": 42,
+        "pingPong": true
+      },
+      "done": {
+        "assetId": "bde753dd-c045-43fb-b1df-d4a81d578d38",
+        "startFrame": 0,
+        "loop": false,
+        "loopFrom": 0,
+        "pingPong": false
+      },
+      "error": {
+        "assetId": "18bf0d2b-4357-4334-9c52-ba7ce0b23071",
+        "startFrame": 0,
+        "loop": false,
+        "loopFrom": 0,
+        "pingPong": false
+      },
+      "sleep": {
+        "assetId": "03b09ef9-e99f-406e-ab5b-67fdc41adf94",
+        "startFrame": 0,
+        "loop": true,
+        "loopFrom": 42,
+        "pingPong": true
+      }
+    },
+    "variants": [
+      "original",
+      "pixel"
+    ],
+    "background": "chroma",
+    "keyColor": [
+      0,
+      170,
+      0
+    ],
+    "threshold": 30,
+    "feather": 40,
+    "despill": true,
+    "spillTolerance": 10,
+    "fps": 12,
+    "originalSize": 384,
+    "pixelSize": 192,
+    "padding": 12,
+    "colors": 64,
+    "alphaThreshold": 160
+  },
+  "legacyAssets": {
+    "assets/deepseek/states.png": "a54b2ad68ed5d3ad1f0a0f72d955a5d8a1847cdf8fd53f4eafbdc7a573d2da6d",
+    "assets/deepseek/actions-v1/atlas.png": "9b07e5165dd67575fac835704364b19cb62dddd1029f5cf4a8c94b4c85e49ae3",
+    "desktop/deepseek-actions.js": "8a45c245ca58e56bd74e08f70e698c17d47a236871c2723631661facd44e617a"
+  },
+  "reusedPreviousAnimationAssets": false,
+  "createdAt": "2026-10-25T08:27:45.466Z"
+}

@@ -1,0 +1,849 @@
+{
+  "states": [
+    "idle",
+    "thinking",
+    "working",
+    "input",
+    "approval",
+    "done",
+    "error",
+    "sleep"
+  ],
+  "globalScale": 0.8389585342333655,
+  "typingHandsMinY": 80,
+  "totalFrames": 64,
+  "frames": [
+    {
+      "state": "idle",
+      "frame": 0,
+      "cameraScale": 0.24173381494859686,
+      "faceWidth": 149.79999999999998,
+      "headbandWidth": 236.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        -2
+      ]
+    },
+    {
+      "state": "idle",
+      "frame": 1,
+      "cameraScale": 0.24173381494859686,
+      "faceWidth": 141.70000000000002,
+      "headbandWidth": 233.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        -2
+      ]
+    },
+    {
+      "state": "idle",
+      "frame": 2,
+      "cameraScale": 0.24173381494859686,
+      "faceWidth": 147.0,
+      "headbandWidth": 234.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        17,
+        -2
+      ]
+    },
+    {
+      "state": "idle",
+      "frame": 3,
+      "cameraScale": 0.24173381494859686,
+      "faceWidth": 147.10000000000002,
+      "headbandWidth": 233.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        17,
+        -2
+      ]
+    },
+    {
+      "state": "idle",
+      "frame": 4,
+      "cameraScale": 0.24173381494859686,
+      "faceWidth": 146.70000000000002,
+      "headbandWidth": 240.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        13
+      ]
+    },
+    {
+      "state": "idle",
+      "frame": 5,
+      "cameraScale": 0.24173381494859686,
+      "faceWidth": 133.60000000000002,
+      "headbandWidth": 237.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        13
+      ]
+    },
+    {
+      "state": "idle",
+      "frame": 6,
+      "cameraScale": 0.24173381494859686,
+      "faceWidth": 133.79999999999998,
+      "headbandWidth": 238.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        17,
+        13
+      ]
+    },
+    {
+      "state": "idle",
+      "frame": 7,
+      "cameraScale": 0.24173381494859686,
+      "faceWidth": 147.10000000000002,
+      "headbandWidth": 238.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        13
+      ]
+    },
+    {
+      "state": "thinking",
+      "frame": 0,
+      "cameraScale": 0.24276246948029298,
+      "faceWidth": 133.20000000000002,
+      "headbandWidth": 235.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        15,
+        -2
+      ]
+    },
+    {
+      "state": "thinking",
+      "frame": 1,
+      "cameraScale": 0.24276246948029298,
+      "faceWidth": 141.0,
+      "headbandWidth": 234.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        15,
+        -2
+      ]
+    },
+    {
+      "state": "thinking",
+      "frame": 2,
+      "cameraScale": 0.24276246948029298,
+      "faceWidth": 144.20000000000002,
+      "headbandWidth": 233.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        -2
+      ]
+    },
+    {
+      "state": "thinking",
+      "frame": 3,
+      "cameraScale": 0.24276246948029298,
+      "faceWidth": 137.89999999999998,
+      "headbandWidth": 222.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        17,
+        -2
+      ]
+    },
+    {
+      "state": "thinking",
+      "frame": 4,
+      "cameraScale": 0.24276246948029298,
+      "faceWidth": 147.10000000000002,
+      "headbandWidth": 243.9,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        15,
+        12
+      ]
+    },
+    {
+      "state": "thinking",
+      "frame": 5,
+      "cameraScale": 0.24276246948029298,
+      "faceWidth": 143.60000000000002,
+      "headbandWidth": 240.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        15,
+        12
+      ]
+    },
+    {
+      "state": "thinking",
+      "frame": 6,
+      "cameraScale": 0.24276246948029298,
+      "faceWidth": 134.60000000000002,
+      "headbandWidth": 241.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        15,
+        12
+      ]
+    },
+    {
+      "state": "thinking",
+      "frame": 7,
+      "cameraScale": 0.24276246948029298,
+      "faceWidth": 127.60000000000002,
+      "headbandWidth": 240.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        15,
+        12
+      ]
+    },
+    {
+      "state": "working",
+      "frame": 0,
+      "cameraScale": 0.2432800866860079,
+      "faceWidth": 148.60000000000002,
+      "headbandWidth": 234.5,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        -8
+      ]
+    },
+    {
+      "state": "working",
+      "frame": 1,
+      "cameraScale": 0.2432800866860079,
+      "faceWidth": 149.39999999999998,
+      "headbandWidth": 235.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        -8
+      ]
+    },
+    {
+      "state": "working",
+      "frame": 2,
+      "cameraScale": 0.2432800866860079,
+      "faceWidth": 149.5,
+      "headbandWidth": 234.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        -8
+      ]
+    },
+    {
+      "state": "working",
+      "frame": 3,
+      "cameraScale": 0.2432800866860079,
+      "faceWidth": 146.44999999999993,
+      "headbandWidth": 234.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        -8
+      ]
+    },
+    {
+      "state": "working",
+      "frame": 4,
+      "cameraScale": 0.2432800866860079,
+      "faceWidth": 148.49999999999997,
+      "headbandWidth": 234.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        2
+      ]
+    },
+    {
+      "state": "working",
+      "frame": 5,
+      "cameraScale": 0.2432800866860079,
+      "faceWidth": 149.60000000000002,
+      "headbandWidth": 234.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        2
+      ]
+    },
+    {
+      "state": "working",
+      "frame": 6,
+      "cameraScale": 0.2432800866860079,
+      "faceWidth": 149.10000000000002,
+      "headbandWidth": 235.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        2
+      ]
+    },
+    {
+      "state": "working",
+      "frame": 7,
+      "cameraScale": 0.2432800866860079,
+      "faceWidth": 149.10000000000002,
+      "headbandWidth": 234.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        2
+      ]
+    },
+    {
+      "state": "input",
+      "frame": 0,
+      "cameraScale": 0.2448462675015831,
+      "faceWidth": 144.5,
+      "headbandWidth": 233.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        15,
+        -5
+      ]
+    },
+    {
+      "state": "input",
+      "frame": 1,
+      "cameraScale": 0.2448462675015831,
+      "faceWidth": 140.89999999999998,
+      "headbandWidth": 232.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        15,
+        -5
+      ]
+    },
+    {
+      "state": "input",
+      "frame": 2,
+      "cameraScale": 0.2448462675015831,
+      "faceWidth": 144.70000000000002,
+      "headbandWidth": 233.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        -5
+      ]
+    },
+    {
+      "state": "input",
+      "frame": 3,
+      "cameraScale": 0.2448462675015831,
+      "faceWidth": 146.70000000000002,
+      "headbandWidth": 231.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        -5
+      ]
+    },
+    {
+      "state": "input",
+      "frame": 4,
+      "cameraScale": 0.2448462675015831,
+      "faceWidth": 148.6,
+      "headbandWidth": 239.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        15,
+        10
+      ]
+    },
+    {
+      "state": "input",
+      "frame": 5,
+      "cameraScale": 0.2448462675015831,
+      "faceWidth": 134.2,
+      "headbandWidth": 236.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        10
+      ]
+    },
+    {
+      "state": "input",
+      "frame": 6,
+      "cameraScale": 0.2448462675015831,
+      "faceWidth": 143.89999999999992,
+      "headbandWidth": 235.54,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        10
+      ]
+    },
+    {
+      "state": "input",
+      "frame": 7,
+      "cameraScale": 0.2448462675015831,
+      "faceWidth": 147.00000000000003,
+      "headbandWidth": 235.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        10
+      ]
+    },
+    {
+      "state": "approval",
+      "frame": 0,
+      "cameraScale": 0.24276246948029298,
+      "faceWidth": 145.79999999999998,
+      "headbandWidth": 235.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        -3
+      ]
+    },
+    {
+      "state": "approval",
+      "frame": 1,
+      "cameraScale": 0.24276246948029298,
+      "faceWidth": 149.89999999999998,
+      "headbandWidth": 234.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        -3
+      ]
+    },
+    {
+      "state": "approval",
+      "frame": 2,
+      "cameraScale": 0.24276246948029298,
+      "faceWidth": 132.60000000000002,
+      "headbandWidth": 233.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        -3
+      ]
+    },
+    {
+      "state": "approval",
+      "frame": 3,
+      "cameraScale": 0.24276246948029298,
+      "faceWidth": 132.29999999999998,
+      "headbandWidth": 233.84000000000015,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        -3
+      ]
+    },
+    {
+      "state": "approval",
+      "frame": 4,
+      "cameraScale": 0.24276246948029298,
+      "faceWidth": 131.5,
+      "headbandWidth": 238.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        15,
+        12
+      ]
+    },
+    {
+      "state": "approval",
+      "frame": 5,
+      "cameraScale": 0.24276246948029298,
+      "faceWidth": 133.5,
+      "headbandWidth": 237.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        15,
+        12
+      ]
+    },
+    {
+      "state": "approval",
+      "frame": 6,
+      "cameraScale": 0.24276246948029298,
+      "faceWidth": 136.69999999999996,
+      "headbandWidth": 237.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        12
+      ]
+    },
+    {
+      "state": "approval",
+      "frame": 7,
+      "cameraScale": 0.24276246948029298,
+      "faceWidth": 130.89999999999998,
+      "headbandWidth": 237.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        12
+      ]
+    },
+    {
+      "state": "done",
+      "frame": 0,
+      "cameraScale": 0.2448462675015831,
+      "faceWidth": 137.50000000000009,
+      "headbandWidth": 233.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        15,
+        -8
+      ]
+    },
+    {
+      "state": "done",
+      "frame": 1,
+      "cameraScale": 0.2448462675015831,
+      "faceWidth": 129.29999999999998,
+      "headbandWidth": 232.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        14,
+        -8
+      ]
+    },
+    {
+      "state": "done",
+      "frame": 2,
+      "cameraScale": 0.2448462675015831,
+      "faceWidth": 129.65000000000003,
+      "headbandWidth": 232.0,
+      "ground": 116,
+      "lift": 4,
+      "offset": [
+        16,
+        -11
+      ]
+    },
+    {
+      "state": "done",
+      "frame": 3,
+      "cameraScale": 0.2448462675015831,
+      "faceWidth": 137.70000000000002,
+      "headbandWidth": 236.0,
+      "ground": 116,
+      "lift": 10,
+      "offset": [
+        16,
+        -12
+      ]
+    },
+    {
+      "state": "done",
+      "frame": 4,
+      "cameraScale": 0.2448462675015831,
+      "faceWidth": 134.79999999999998,
+      "headbandWidth": 240.0,
+      "ground": 116,
+      "lift": 14,
+      "offset": [
+        14,
+        4
+      ]
+    },
+    {
+      "state": "done",
+      "frame": 5,
+      "cameraScale": 0.2448462675015831,
+      "faceWidth": 136.60000000000002,
+      "headbandWidth": 240.0,
+      "ground": 116,
+      "lift": 7,
+      "offset": [
+        14,
+        2
+      ]
+    },
+    {
+      "state": "done",
+      "frame": 6,
+      "cameraScale": 0.2448462675015831,
+      "faceWidth": 137.0,
+      "headbandWidth": 237.94,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        5
+      ]
+    },
+    {
+      "state": "done",
+      "frame": 7,
+      "cameraScale": 0.2448462675015831,
+      "faceWidth": 131.5,
+      "headbandWidth": 238.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        5
+      ]
+    },
+    {
+      "state": "error",
+      "frame": 0,
+      "cameraScale": 0.2437999159310635,
+      "faceWidth": 132.79999999999998,
+      "headbandWidth": 234.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        14,
+        -5
+      ]
+    },
+    {
+      "state": "error",
+      "frame": 1,
+      "cameraScale": 0.2437999159310635,
+      "faceWidth": 125.59999999999997,
+      "headbandWidth": 230.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        15,
+        -6
+      ]
+    },
+    {
+      "state": "error",
+      "frame": 2,
+      "cameraScale": 0.2437999159310635,
+      "faceWidth": 134.10000000000002,
+      "headbandWidth": 233.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        14,
+        -6
+      ]
+    },
+    {
+      "state": "error",
+      "frame": 3,
+      "cameraScale": 0.2437999159310635,
+      "faceWidth": 131.5,
+      "headbandWidth": 209.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        20,
+        -6
+      ]
+    },
+    {
+      "state": "error",
+      "frame": 4,
+      "cameraScale": 0.2437999159310635,
+      "faceWidth": 137.39999999999998,
+      "headbandWidth": 266.7599999999992,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        11,
+        12
+      ]
+    },
+    {
+      "state": "error",
+      "frame": 5,
+      "cameraScale": 0.2437999159310635,
+      "faceWidth": 145.79999999999998,
+      "headbandWidth": 228.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        14,
+        12
+      ]
+    },
+    {
+      "state": "error",
+      "frame": 6,
+      "cameraScale": 0.2437999159310635,
+      "faceWidth": 132.79999999999998,
+      "headbandWidth": 234.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        15,
+        12
+      ]
+    },
+    {
+      "state": "error",
+      "frame": 7,
+      "cameraScale": 0.2437999159310635,
+      "faceWidth": 128.29999999999993,
+      "headbandWidth": 236.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        15,
+        12
+      ]
+    },
+    {
+      "state": "sleep",
+      "frame": 0,
+      "cameraScale": 0.2377049180327869,
+      "faceWidth": 147.10000000000002,
+      "headbandWidth": 240.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        17,
+        0
+      ]
+    },
+    {
+      "state": "sleep",
+      "frame": 1,
+      "cameraScale": 0.2377049180327869,
+      "faceWidth": 141.0,
+      "headbandWidth": 236.42,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        19,
+        0
+      ]
+    },
+    {
+      "state": "sleep",
+      "frame": 2,
+      "cameraScale": 0.2377049180327869,
+      "faceWidth": 138.0,
+      "headbandWidth": 235.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        0
+      ]
+    },
+    {
+      "state": "sleep",
+      "frame": 3,
+      "cameraScale": 0.2377049180327869,
+      "faceWidth": 133.29999999999998,
+      "headbandWidth": 233.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        18,
+        0
+      ]
+    },
+    {
+      "state": "sleep",
+      "frame": 4,
+      "cameraScale": 0.2377049180327869,
+      "faceWidth": 135.79999999999998,
+      "headbandWidth": 243.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        17,
+        17
+      ]
+    },
+    {
+      "state": "sleep",
+      "frame": 5,
+      "cameraScale": 0.2377049180327869,
+      "faceWidth": 134.60000000000002,
+      "headbandWidth": 241.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        16,
+        17
+      ]
+    },
+    {
+      "state": "sleep",
+      "frame": 6,
+      "cameraScale": 0.2377049180327869,
+      "faceWidth": 132.70000000000002,
+      "headbandWidth": 232.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        20,
+        18
+      ]
+    },
+    {
+      "state": "sleep",
+      "frame": 7,
+      "cameraScale": 0.2377049180327869,
+      "faceWidth": 134.10000000000002,
+      "headbandWidth": 241.0,
+      "ground": 116,
+      "lift": 0,
+      "offset": [
+        18,
+        17
+      ]
+    }
+  ]
+}

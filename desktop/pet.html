@@ -1,0 +1,8 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'"><script src="theme-initial.js"></script><title>灵伴 · 桌宠</title><link rel="stylesheet" href="pet.css"><link rel="stylesheet" href="pet-theme.css"></head><body>
+<main id="pet" aria-label="灵伴桌面宠物">
+  <div id="status" class="status"><i></i><span id="statusText">等待 Agent 连接</span></div>
+  <canvas id="sprite" width="512" height="512" title="轻点回应 · 在头部来回移动鼠标可摸头 · 按住移动可拖动" aria-label="角色动画，轻点回应，在头部来回移动鼠标可摸头，按住移动可拖动，右键打开快捷控制"></canvas>
+  <div id="interaction" class="interaction" role="status" aria-live="polite" hidden></div>
+  <div class="actions"><button id="settings" title="打开工作台" aria-label="打开工作台">⚙</button><button id="swap" title="切换角色" aria-label="切换角色">⇄</button><button id="hide" title="隐藏桌宠，可从托盘恢复" aria-label="隐藏桌宠，可从托盘恢复">−</button></div>
+</main><script type="module" src="pet.js"></script></body></html>
+

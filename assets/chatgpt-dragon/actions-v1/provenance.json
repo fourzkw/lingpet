@@ -1,0 +1,13 @@
+{
+  "generator": "local ComfyUI MiniMax H3",
+  "visualInput": "output/imagegen/chatgpt-chibi-original-v1/base.png",
+  "visualInputSha256": "acb8df5a84bc25080cb07d857cd228cd9fc4c991cbe5972d578ed6c5bf82d19d",
+  "originalReference": "codex-clipboard-557d15e9-3b01-422f-96ef-cbcdbf994e33.png",
+  "reusedPreviousPetAssets": false,
+  "pipeline": [
+    "original reference -> newly generated smooth chibi base",
+    "H3 image-to-video, eight independent actions",
+    "green-screen keying",
+    "one global 64-color palette, 192px sprites, binary alpha"
+  ]
+}

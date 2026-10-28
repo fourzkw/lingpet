@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>灵伴 LingPet · 视觉改版方案</title>
+<style>
+  :root {
+    --bg: #0b0908;
+    --surface: #171210;
+    --surface-alt: #1f1814;
+    --line: #33291f;
+    --line-strong: #4a3a2c;
+    --text: #f6efe6;
+    --muted: #b4a494;
+    --faint: #7e7061;
+    --accent: #f0a860;
+    --accent-soft: #3a2a1c;
+    --accent-ink: #2a1c10;
+    --radius: 14px;
+    --display: 'Noto Serif SC', 'Microsoft YaHei', serif;
+    --ui: 'Microsoft YaHei', 'Noto Sans SC', system-ui, sans-serif;
+    --mono: Consolas, 'Courier New', monospace;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body {
+    margin: 0;
+    padding: 56px clamp(20px, 5vw, 72px) 96px;
+    background:
+      radial-gradient(1200px 600px at 78% -8%, rgba(240, 168, 96, 0.13), transparent 60%),
+      radial-gradient(900px 500px at 0% 30%, rgba(168, 189, 216, 0.05), transparent 60%),
+      var(--bg);
+    color: var(--text);
+    font: 13px/1.7 var(--ui);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  .kicker { font: 11px/1 var(--mono); letter-spacing: 3px; color: var(--accent); text-transform: uppercase; }
+  h1 { font: 700 clamp(34px, 5vw, 52px)/1.15 var(--display); margin: 18px 0 14px; letter-spacing: 0.5px; }
+  .lede { max-width: 62ch; color: var(--muted); font-size: 14px; margin: 0 0 8px; }
+  .meta { font: 10.5px/1 var(--mono); color: var(--faint); letter-spacing: 0.6px; margin-top: 18px; }
+  h2 { font: 700 22px/1.3 var(--display); margin: 64px 0 6px; }
+  h2 .no { font: 11px/1 var(--mono); color: var(--accent); letter-spacing: 2px; margin-right: 10px; vertical-align: 4px; }
+  .sub { color: var(--faint); font-size: 12px; margin: 0 0 22px; }
+  a { color: var(--accent); }
+
+  /* 现状 */
+  .before-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .shot { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .shot img { display: block; width: 100%; height: 200px; object-fit: cover; object-position: top left; }
+  .shot figcaption { padding: 10px 14px 12px; font-size: 11.5px; color: var(--muted); }
+  .shot figcaption b { color: var(--text); font-weight: 600; display: block; margin-bottom: 2px; }
+  .audit {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px; background: var(--line); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden; margin-top: 18px;
+  }
+  .audit div { background: var(--surface); padding: 14px 16px; }
+  .audit b { display: block; font: 700 24px/1.2 var(--display); color: var(--accent); }
+  .audit span { font-size: 11px; color: var(--faint); }
+
+  /* 方案卡 */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px; }
+  .card {
+    background: linear-gradient(180deg, var(--surface-alt), var(--surface));
+    border: 1px solid var(--line); border-radius: 18px; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .card .preview { position: relative; height: 300px; background: #000; overflow: hidden; }
+  .card .preview img { width: 100%; display: block; }
+  .card .preview::after {
+    content: ''; position: absolute; inset: auto 0 0 0; height: 90px;
+    background: linear-gradient(180deg, transparent, var(--surface-alt));
+  }
+  .card .preview .badge {
+    position: absolute; top: 12px; left: 12px; z-index: 2;
+    font: 10px/1 var(--mono); letter-spacing: 1.4px; color: var(--accent-ink);
+    background: rgba(240, 168, 96, 0.92); padding: 6px 9px; border-radius: 6px;
+  }
+  .card .body { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+  .card h3 { font: 700 21px/1.3 var(--display); margin: 0; }
+  .card h3 em { font: 400 9.5px/1 var(--mono); letter-spacing: 2px; color: var(--faint); display: block; margin-top: 6px; font-style: normal; }
+  .card p { margin: 0; color: var(--muted); font-size: 12.5px; }
+  .card .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .card .tags span { font-size: 10px; color: var(--muted); border: 1px solid var(--line-strong); border-radius: 999px; padding: 3px 9px; }
+  .card .links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 8px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+    font-size: 11.5px; padding: 8px 13px; border-radius: 9px;
+    border: 1px solid var(--line-strong); color: var(--text); background: var(--surface-alt);
+    transition: 160ms cubic-bezier(.2, .8, .2, 1);
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+  .btn.primary { background: linear-gradient(135deg, #ffcb91, #eda15c); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+  .btn.primary:hover { color: var(--accent-ink); filter: brightness(1.05); }
+
+  /* 推荐 */
+  .pick { border: 1px solid var(--line); border-radius: 18px; padding: 26px 28px; background: var(--surface); margin-top: 18px; }
+  .pick h3 { margin: 0 0 10px; font: 700 19px/1.4 var(--display); }
+  .pick ol { margin: 0; padding-left: 20px; color: var(--muted); }
+  .pick li { margin: 7px 0; }
+  .pick code { font: 11px var(--mono); background: var(--surface-alt); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; color: var(--text); }
+  footer { margin-top: 70px; padding-top: 22px; border-top: 1px solid var(--line); font: 10.5px/1.8 var(--mono); color: var(--faint); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">LINGPET / 灵伴 · 视觉改版提案</div>
+  <h1>一个像素伙伴的四种样子</h1>
+  <p class="lede">
+    灵伴是一个常驻桌面的像素角色伙伴：它跟着 DSH / Codex / Cursor 的会话切换状态，右键能叫出快捷控制，工作台里挑形象与跟随方式。
+    现状是一套「通用深色 SaaS 后台 + 暖桃点缀」，界面和像素角色不在同一个世界里。下面四个方案用同一套信息架构，给出四种气质。
+  </p>
+  <div class="meta">4 DIRECTIONS · 7 SURFACES · 2026-10 · 每套含 board.png / notes.md / tokens.json</div>
+
+  <h2><span class="no">00</span>现状基线</h2>
+  <p class="sub">改版前的四个主要表面。审计脚本统计了 7 个样式表的 token 离散度。</p>
+  <div class="before-grid">
+    <figure class="shot"><img src="before/workbench.png" alt="现状工作台" /><figcaption><b>桌宠工作台</b>深色后台 + 暖桃点缀，品牌只有一个圆角方块</figcaption></figure>
+    <figure class="shot"><img src="before/pet.png" alt="现状桌宠浮层" /><figcaption><b>桌宠浮层</b>状态只有一个胶囊与 6px 圆点</figcaption></figure>
+    <figure class="shot"><img src="before/dsh-panel.png" alt="现状 DSH 面板" /><figcaption><b>DSH 设置面板</b>强调色与桌面端不一致</figcaption></figure>
+    <figure class="shot"><img src="before/market.png" alt="现状市场" /><figcaption><b>桌宠市场</b>信息层级稀薄，空状态无引导</figcaption></figure>
+  </div>
+  <div class="audit">
+    <div><b>139</b><span>个不同十六进制颜色</span></div>
+    <div><b>19</b><span>档 border-radius</span></div>
+    <div><b>28</b><span>档字号</span></div>
+    <div><b>1</b><span>个 @keyframes（全项目）</span></div>
+    <div><b>0</b><span>prefers-color-scheme / reduced-motion</span></div>
+  </div>
+
+  <h2><span class="no">01</span>四个方向</h2>
+  <p class="sub">每个方向都覆盖：桌宠浮层（八态）、快捷控制、工作台、市场、DSH 面板、市场网站，以及一套可落地的 token。</p>
+  <div class="cards">
+    <article class="card">
+      <div class="preview"><span class="badge">01 PIXEL WORKSHOP</span><img src="proposals/01-pixel-workshop/board.png" alt="像素工坊方案板图" /></div>
+      <div class="body">
+        <h3>像素工坊<em>PIXEL WORKSHOP</em></h3>
+        <p>把界面做成一块 8-bit 卡带菜单：2px 硬描边、位移硬投影、0 圆角、steps() 帧动效。角色从「素材」变成「主机里的存档」。</p>
+        <div class="tags"><span>硬边</span><span>卡带</span><span>像素网格</span><span>帧动画</span></div>
+        <div class="links">
+          <a class="btn primary" href="proposals/01-pixel-workshop/board.png">看完整板图</a>
+          <a class="btn" href="proposals/01-pixel-workshop/notes.md">方案说明</a>
+          <a class="btn" href="proposals/01-pixel-workshop/tokens.json">tokens.json</a>
+        </div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="preview"><span class="badge">02 WARM NIGHT DESK</span><img src="proposals/02-warm-night/board.png" alt="暖光夜桌方案板图" /></div>
+      <div class="body">
+        <h3>暖光夜桌<em>WARM NIGHT DESK</em></h3>
+        <p>桌宠是深夜书桌上的一盏灯：深棕夜色、玻璃卡片、随状态换色的光晕，界面退到角色之后。改造成本最低、夜间耐看。</p>
+        <div class="tags"><span>夜间</span><span>暖光</span><span>玻璃</span><span>呼吸</span></div>
+        <div class="links">
+          <a class="btn primary" href="proposals/02-warm-night/board.png">看完整板图</a>
+          <a class="btn" href="proposals/02-warm-night/notes.md">方案说明</a>
+          <a class="btn" href="proposals/02-warm-night/tokens.json">tokens.json</a>
+        </div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="preview"><span class="badge">03 PAPER JOURNAL</span><img src="proposals/03-paper-journal/board.png" alt="纸感手账方案板图" /></div>
+      <div class="body">
+        <h3>纸感手账<em>PAPER JOURNAL</em></h3>
+        <p>屏幕是一只摊开的手账：暖纸、铅笔线、朱砂印章、胶带与贴纸角色。白天也好看，同时给出夜间深色变体。</p>
+        <div class="tags"><span>暖纸</span><span>朱砂</span><span>贴纸</span><span>浅色优先</span></div>
+        <div class="links">
+          <a class="btn primary" href="proposals/03-paper-journal/board.png">看完整板图</a>
+          <a class="btn" href="proposals/03-paper-journal/notes.md">方案说明</a>
+          <a class="btn" href="proposals/03-paper-journal/tokens.json">tokens.json</a>
+        </div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="preview"><span class="badge">04 TERMINAL PULSE</span><img src="proposals/04-terminal-pulse/board.png" alt="终端脉动方案板图" /></div>
+      <div class="body">
+        <h3>终端脉动<em>TERMINAL PULSE</em></h3>
+        <p>桌宠是一个可爱的 CLI 进程：状态就是 statusline，动作就是进度条与行内提示，荧光色只占 8%。面向天天泡终端的开发者。</p>
+        <div class="tags"><span>等宽</span><span>statusline</span><span>键帽</span><span>光标</span></div>
+        <div class="links">
+          <a class="btn primary" href="proposals/04-terminal-pulse/board.png">看完整板图</a>
+          <a class="btn" href="proposals/04-terminal-pulse/notes.md">方案说明</a>
+          <a class="btn" href="proposals/04-terminal-pulse/tokens.json">tokens.json</a>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <h2><span class="no">02</span>怎么选</h2>
+  <p class="sub">详细对比、落地顺序与风险见 <a href="README.md">README.md</a>；四方案横向拼图见 <a href="compare.png">compare.png</a>。</p>
+  <div class="pick">
+    <h3>建议：以「暖光夜桌」为基线，吸收另外三套的长处</h3>
+    <ol>
+      <li>主体（桌宠浮层 / 工作台 / 市场 / DSH 面板）用方案 02：改动集中在 token 与光晕，不动信息架构，一两轮就能上线。</li>
+      <li>把方案 01 的「状态图标 + 硬边框 tag」借到工作台的角色卡与市场标签上，给像素角色一点同类语言。</li>
+      <li>把方案 03 的浅色变体作为「白天主题」候选，先只做 <code>prefers-color-scheme: light</code> 的一版。</li>
+      <li>把方案 04 的等宽元信息层（会话 id、工具名、耗时）收进工作台的会话列表，让「机器信息」和「人话」分层。</li>
+    </ol>
+  </div>
+
+  <footer>
+    LINGPET / 灵伴 · 视觉改版提案 · 2026-10<br />
+    design/proposals/spec.md 定义了四个方案共用的交付契约；design/audit/tokens.md 是改版前的 token 审计原始数据。
+  </footer>
+</div>
+</body>
+</html>

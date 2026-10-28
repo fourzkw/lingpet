@@ -1,0 +1,75 @@
+{
+  "name": "board-pet",
+  "displayName": "灵伴 · 桌宠",
+  "description": "在 Cursor 侧边栏启动、关闭桌宠，打开工作台并查看连接状态。",
+  "publisher": "local-board-pet",
+  "version": "0.4.9",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./extension.cjs",
+  "extensionKind": [
+    "ui"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    }
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "board-pet",
+          "title": "灵伴桌宠",
+          "icon": "media/pet.svg"
+        }
+      ]
+    },
+    "views": {
+      "board-pet": [
+        {
+          "id": "board-pet.controls",
+          "name": "桌宠控制",
+          "type": "webview"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "board-pet.start",
+        "title": "灵伴：打开桌宠"
+      },
+      {
+        "command": "board-pet.stop",
+        "title": "灵伴：关闭桌宠"
+      },
+      {
+        "command": "board-pet.dashboard",
+        "title": "灵伴：打开工作台"
+      },
+      {
+        "command": "board-pet.refresh",
+        "title": "灵伴：刷新状态",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "board-pet.refresh",
+          "when": "view == board-pet.controls",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "license": "UNLICENSED",
+  "icon": "media/app.png"
+}

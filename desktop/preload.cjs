@@ -1,0 +1,20 @@
+const { contextBridge, ipcRenderer } = require('electron');
+contextBridge.exposeInMainWorld('pet', {
+  system:body=>ipcRenderer.invoke('pet:system',body),
+  onSystemUpdate:callback=>{const listener=(_,value)=>callback(value);ipcRenderer.on('pet:system-update',listener);return()=>ipcRenderer.removeListener('pet:system-update',listener);},
+  market: body => ipcRenderer.invoke('pet:market',body),
+  get: () => ipcRenderer.invoke('pet:get'),
+  character:body=>ipcRenderer.invoke('pet:character',body),
+  appearanceSheet: value => ipcRenderer.invoke('pet:appearance-sheet',value),
+  settings: value => ipcRenderer.invoke('pet:settings',value),
+  select: key => ipcRenderer.invoke('pet:select',key),
+  demo: state => ipcRenderer.invoke('pet:demo',state),
+  manage: body => ipcRenderer.invoke('pet:manage',body),
+  showSettings: () => ipcRenderer.send('pet:show-settings'),
+  showQuickControls: () => ipcRenderer.send('pet:quick-controls'),
+  onQuickControlsClosed: callback => {const listener=()=>callback();ipcRenderer.on('pet:quick-controls-closed',listener);return()=>ipcRenderer.removeListener('pet:quick-controls-closed',listener);},
+  hide: () => ipcRenderer.send('pet:hide'),
+  ignoreMouse: value => ipcRenderer.send('pet:ignore-mouse',Boolean(value)),
+  drag: value => ipcRenderer.send('pet:drag',Boolean(value)),
+  onUpdate: callback => {const listener=(_,value)=>callback(value);ipcRenderer.on('pet:update',listener);return()=>ipcRenderer.removeListener('pet:update',listener);},
+});

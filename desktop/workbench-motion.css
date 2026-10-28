@@ -1,0 +1,71 @@
+/* Shared motion language, with colors and geometry inherited from each theme. */
+:root{--motion-fast:160ms;--motion-ease:cubic-bezier(.22,1,.36,1)}
+@keyframes workbench-arrive{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes workbench-dialog{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes workbench-backdrop{from{background:transparent}to{background:rgb(0 0 0 / .35)}}
+@keyframes workbench-breathe{0%,100%{opacity:.55;transform:scale(.96)}50%{opacity:1;transform:scale(1.04)}}
+@keyframes workbench-signal{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--green) 24%,transparent)}100%{box-shadow:0 0 0 7px transparent}}
+@media(prefers-reduced-motion:no-preference){
+  aside .brand,aside .workspace-navigation,aside .pet-list-heading,main header,.pet-management,.preview-panel,.editor-panel{animation:workbench-arrive 480ms var(--motion-ease) backwards}
+  aside .workspace-navigation,.pet-management{animation-delay:45ms}
+  aside .pet-list-heading,.preview-panel{animation-delay:90ms}
+  .editor-panel{animation-delay:135ms}
+  .market-card{animation:workbench-arrive 400ms var(--motion-ease) backwards}
+  .market-card:nth-child(2){animation-delay:35ms}.market-card:nth-child(3){animation-delay:70ms}.market-card:nth-child(4){animation-delay:105ms}
+  .orbit{animation:workbench-breathe 6s ease-in-out infinite;pointer-events:none}
+  .connection.connected i{animation:workbench-signal 2.8s ease-out 3}
+  dialog[open]{animation:workbench-dialog 280ms var(--motion-ease)}
+  dialog[open]::backdrop{animation:workbench-backdrop 220ms ease-out;background:rgb(0 0 0 / .35)}
+}
+.button,.workspace-nav,.tabs button,.market-page-tabs button,.app-settings-tabs button,.text-button,summary{transition:background-color var(--motion-fast),color var(--motion-fast),border-color var(--motion-fast),box-shadow var(--motion-fast),transform var(--motion-fast) var(--motion-ease)}
+.character-card,.theme-card,.market-card,.pet-list-row,.session{transition:transform 220ms var(--motion-ease),border-color 180ms,box-shadow 220ms,background-color 180ms}
+.character-art,.theme-swatch,.market-cover img{transition:transform 320ms var(--motion-ease)}
+.switch{transition:background-color 180ms,box-shadow 180ms}
+.switch:before{transition:transform 220ms var(--motion-ease)}
+input:not([type=range]):not([type=checkbox]),select,textarea{transition:border-color 180ms,box-shadow 180ms,background-color 180ms}
+input:focus-visible,select:focus-visible,textarea:focus-visible{box-shadow:0 0 0 3px var(--accent-soft)}
+@media(hover:hover){
+  .button:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 4px 12px color-mix(in srgb,var(--accent) 12%,transparent)}
+  .workspace-nav:hover{transform:translateX(3px)}
+  .character-card:not(:disabled):hover,.theme-card:hover,.market-card:hover{transform:translateY(-3px);border-color:var(--line-strong);box-shadow:var(--panel-shadow),0 7px 18px color-mix(in srgb,var(--accent) 8%,transparent)}
+  .character-card:hover .character-art,.theme-card:hover .theme-swatch,.market-card:hover .market-cover img{transform:scale(1.035)}
+  .pet-list-row:hover{transform:translateX(2px)}
+}
+.button:not(:disabled):active,.character-card:not(:disabled):active,.theme-card:active,.workspace-nav:active,.tabs button:active,.market-page-tabs button:active,.app-settings-tabs button:active{transform:scale(.975);transition-duration:80ms}
+.pet-list-remove{transition:opacity 160ms,color 160ms}
+/* Keep the overflow menu above animated/sticky workspace panels, even on entry. */
+.pet-management{position:relative;z-index:6}
+#toast{display:block;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 200ms,transform 260ms var(--motion-ease),visibility 200ms;transform:translate(-50%,8px)}
+#toast.visible{opacity:1;visibility:visible;transform:translate(-50%,0)}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* Animate the native disclosure box so layout follows both opening and closing.
+   The browser retains summary activation, focus and accessibility semantics. */
+@supports (interpolate-size:allow-keywords){
+  details{interpolate-size:allow-keywords}
+  details:not(.pet-more)::details-content{block-size:0;opacity:0;overflow:clip;transition:block-size 300ms var(--motion-ease),opacity 200ms,content-visibility 300ms;transition-behavior:allow-discrete}
+  details:not(.pet-more)[open]::details-content{block-size:auto;opacity:1}
+  /* The more menu is positioned outside its disclosure; do not clip it. */
+  .pet-more::details-content{overflow:visible;opacity:0;transition:opacity 180ms,content-visibility 180ms;transition-behavior:allow-discrete}
+  .pet-more[open]::details-content{opacity:1}
+}
+summary::marker{color:var(--accent)}
+
+/* Customizable native selects keep OS/browser keyboard and selection behavior,
+   while allowing their popover to fade and slide in both directions. */
+@supports (appearance:base-select){
+  select,select::picker(select){appearance:base-select}
+  select{align-items:center;gap:8px}
+  select::picker-icon{color:var(--muted);transition:rotate 220ms var(--motion-ease)}
+  select:open::picker-icon{rotate:180deg}
+  select::picker(select){border:1px solid var(--line-strong);border-radius:var(--control-radius);padding:5px;background:var(--surface);color:var(--text);box-shadow:var(--panel-shadow);max-block-size:320px;overflow-y:auto;opacity:0;transform:translateY(-6px);transition:opacity 180ms,transform 220ms var(--motion-ease),display 220ms,overlay 220ms;transition-behavior:allow-discrete}
+  select::picker(select):popover-open{opacity:1;transform:translateY(0)}
+  @starting-style{select::picker(select):popover-open{opacity:0;transform:translateY(-6px)}}
+  select option{padding:9px 12px;border-radius:var(--control-radius);font:inherit;transition:background-color 140ms,color 140ms}
+  select option:hover,select option:focus-visible{background:var(--accent-soft);color:var(--accent)}
+  select option:checked{background:var(--accent-soft);color:var(--accent)}
+  select option::checkmark{color:var(--accent)}
+}
+@media(prefers-reduced-motion:reduce){
+  details::details-content,select::picker(select),select::picker-icon{transition:none!important;animation:none!important}
+}

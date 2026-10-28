@@ -1,0 +1,640 @@
+{
+  "actions": [
+    "wave",
+    "typing",
+    "jump",
+    "idle",
+    "thinking",
+    "approval",
+    "error",
+    "sleep"
+  ],
+  "frames": [
+    {
+      "action": "typing",
+      "frame": 0,
+      "cameraScale": [
+        0.3686635944700461,
+        0.44
+      ],
+      "ground": 108,
+      "offset": [
+        -10,
+        -157
+      ]
+    },
+    {
+      "action": "typing",
+      "frame": 1,
+      "cameraScale": [
+        0.3686635944700461,
+        0.44
+      ],
+      "ground": 108,
+      "offset": [
+        -10,
+        -157
+      ]
+    },
+    {
+      "action": "typing",
+      "frame": 2,
+      "cameraScale": [
+        0.3686635944700461,
+        0.44
+      ],
+      "ground": 108,
+      "offset": [
+        -10,
+        -157
+      ]
+    },
+    {
+      "action": "typing",
+      "frame": 3,
+      "cameraScale": [
+        0.3686635944700461,
+        0.44
+      ],
+      "ground": 108,
+      "offset": [
+        -8,
+        -157
+      ]
+    },
+    {
+      "action": "typing",
+      "frame": 4,
+      "cameraScale": [
+        0.3686635944700461,
+        0.44
+      ],
+      "ground": 108,
+      "offset": [
+        -10,
+        -46
+      ]
+    },
+    {
+      "action": "typing",
+      "frame": 5,
+      "cameraScale": [
+        0.3686635944700461,
+        0.44
+      ],
+      "ground": 108,
+      "offset": [
+        -10,
+        -46
+      ]
+    },
+    {
+      "action": "typing",
+      "frame": 6,
+      "cameraScale": [
+        0.3686635944700461,
+        0.44
+      ],
+      "ground": 108,
+      "offset": [
+        -9,
+        -46
+      ]
+    },
+    {
+      "action": "typing",
+      "frame": 7,
+      "cameraScale": [
+        0.3686635944700461,
+        0.44
+      ],
+      "ground": 108,
+      "offset": [
+        -8,
+        -46
+      ]
+    },
+    {
+      "action": "idle",
+      "frame": 0,
+      "cameraScale": [
+        0.36363636363636365,
+        0.41509433962264153
+      ],
+      "ground": 108,
+      "offset": [
+        -10,
+        -123
+      ]
+    },
+    {
+      "action": "idle",
+      "frame": 1,
+      "cameraScale": [
+        0.36363636363636365,
+        0.41509433962264153
+      ],
+      "ground": 108,
+      "offset": [
+        -8,
+        -123
+      ]
+    },
+    {
+      "action": "idle",
+      "frame": 2,
+      "cameraScale": [
+        0.36363636363636365,
+        0.41509433962264153
+      ],
+      "ground": 108,
+      "offset": [
+        -5,
+        -123
+      ]
+    },
+    {
+      "action": "idle",
+      "frame": 3,
+      "cameraScale": [
+        0.36363636363636365,
+        0.41509433962264153
+      ],
+      "ground": 108,
+      "offset": [
+        -2,
+        -123
+      ]
+    },
+    {
+      "action": "idle",
+      "frame": 4,
+      "cameraScale": [
+        0.36363636363636365,
+        0.41509433962264153
+      ],
+      "ground": 108,
+      "offset": [
+        -10,
+        0
+      ]
+    },
+    {
+      "action": "idle",
+      "frame": 5,
+      "cameraScale": [
+        0.36363636363636365,
+        0.41509433962264153
+      ],
+      "ground": 108,
+      "offset": [
+        -8,
+        0
+      ]
+    },
+    {
+      "action": "idle",
+      "frame": 6,
+      "cameraScale": [
+        0.36363636363636365,
+        0.41509433962264153
+      ],
+      "ground": 108,
+      "offset": [
+        -5,
+        0
+      ]
+    },
+    {
+      "action": "idle",
+      "frame": 7,
+      "cameraScale": [
+        0.36363636363636365,
+        0.41509433962264153
+      ],
+      "ground": 108,
+      "offset": [
+        -4,
+        0
+      ]
+    },
+    {
+      "action": "thinking",
+      "frame": 0,
+      "cameraScale": [
+        0.35714285714285715,
+        0.3963963963963964
+      ],
+      "ground": 108,
+      "offset": [
+        -9,
+        -114
+      ]
+    },
+    {
+      "action": "thinking",
+      "frame": 1,
+      "cameraScale": [
+        0.35714285714285715,
+        0.3963963963963964
+      ],
+      "ground": 108,
+      "offset": [
+        -8,
+        -114
+      ]
+    },
+    {
+      "action": "thinking",
+      "frame": 2,
+      "cameraScale": [
+        0.35714285714285715,
+        0.3963963963963964
+      ],
+      "ground": 108,
+      "offset": [
+        -4,
+        -114
+      ]
+    },
+    {
+      "action": "thinking",
+      "frame": 3,
+      "cameraScale": [
+        0.35714285714285715,
+        0.3963963963963964
+      ],
+      "ground": 108,
+      "offset": [
+        -5,
+        -114
+      ]
+    },
+    {
+      "action": "thinking",
+      "frame": 4,
+      "cameraScale": [
+        0.35714285714285715,
+        0.3963963963963964
+      ],
+      "ground": 108,
+      "offset": [
+        -10,
+        3
+      ]
+    },
+    {
+      "action": "thinking",
+      "frame": 5,
+      "cameraScale": [
+        0.35714285714285715,
+        0.3963963963963964
+      ],
+      "ground": 108,
+      "offset": [
+        -9,
+        3
+      ]
+    },
+    {
+      "action": "thinking",
+      "frame": 6,
+      "cameraScale": [
+        0.35714285714285715,
+        0.3963963963963964
+      ],
+      "ground": 108,
+      "offset": [
+        -5,
+        3
+      ]
+    },
+    {
+      "action": "thinking",
+      "frame": 7,
+      "cameraScale": [
+        0.35714285714285715,
+        0.3963963963963964
+      ],
+      "ground": 108,
+      "offset": [
+        -5,
+        3
+      ]
+    },
+    {
+      "action": "approval",
+      "frame": 0,
+      "cameraScale": [
+        0.36036036036036034,
+        0.43564356435643564
+      ],
+      "ground": 108,
+      "offset": [
+        -10,
+        -146
+      ]
+    },
+    {
+      "action": "approval",
+      "frame": 1,
+      "cameraScale": [
+        0.36036036036036034,
+        0.43564356435643564
+      ],
+      "ground": 108,
+      "offset": [
+        -9,
+        -146
+      ]
+    },
+    {
+      "action": "approval",
+      "frame": 2,
+      "cameraScale": [
+        0.36036036036036034,
+        0.43564356435643564
+      ],
+      "ground": 108,
+      "offset": [
+        -7,
+        -146
+      ]
+    },
+    {
+      "action": "approval",
+      "frame": 3,
+      "cameraScale": [
+        0.36036036036036034,
+        0.43564356435643564
+      ],
+      "ground": 108,
+      "offset": [
+        -4,
+        -146
+      ]
+    },
+    {
+      "action": "approval",
+      "frame": 4,
+      "cameraScale": [
+        0.36036036036036034,
+        0.43564356435643564
+      ],
+      "ground": 108,
+      "offset": [
+        -10,
+        -15
+      ]
+    },
+    {
+      "action": "approval",
+      "frame": 5,
+      "cameraScale": [
+        0.36036036036036034,
+        0.43564356435643564
+      ],
+      "ground": 108,
+      "offset": [
+        -9,
+        -15
+      ]
+    },
+    {
+      "action": "approval",
+      "frame": 6,
+      "cameraScale": [
+        0.36036036036036034,
+        0.43564356435643564
+      ],
+      "ground": 108,
+      "offset": [
+        -7,
+        -15
+      ]
+    },
+    {
+      "action": "approval",
+      "frame": 7,
+      "cameraScale": [
+        0.36036036036036034,
+        0.43564356435643564
+      ],
+      "ground": 108,
+      "offset": [
+        -3,
+        -15
+      ]
+    },
+    {
+      "action": "error",
+      "frame": 0,
+      "cameraScale": [
+        0.36199095022624433,
+        0.3893805309734513
+      ],
+      "ground": 108,
+      "offset": [
+        -9,
+        -109
+      ]
+    },
+    {
+      "action": "error",
+      "frame": 1,
+      "cameraScale": [
+        0.36199095022624433,
+        0.3893805309734513
+      ],
+      "ground": 108,
+      "offset": [
+        -9,
+        -108
+      ]
+    },
+    {
+      "action": "error",
+      "frame": 2,
+      "cameraScale": [
+        0.36199095022624433,
+        0.3893805309734513
+      ],
+      "ground": 108,
+      "offset": [
+        -9,
+        -109
+      ]
+    },
+    {
+      "action": "error",
+      "frame": 3,
+      "cameraScale": [
+        0.36199095022624433,
+        0.3893805309734513
+      ],
+      "ground": 108,
+      "offset": [
+        -9,
+        -109
+      ]
+    },
+    {
+      "action": "error",
+      "frame": 4,
+      "cameraScale": [
+        0.36199095022624433,
+        0.3893805309734513
+      ],
+      "ground": 108,
+      "offset": [
+        -10,
+        4
+      ]
+    },
+    {
+      "action": "error",
+      "frame": 5,
+      "cameraScale": [
+        0.36199095022624433,
+        0.3893805309734513
+      ],
+      "ground": 108,
+      "offset": [
+        -9,
+        3
+      ]
+    },
+    {
+      "action": "error",
+      "frame": 6,
+      "cameraScale": [
+        0.36199095022624433,
+        0.3893805309734513
+      ],
+      "ground": 108,
+      "offset": [
+        -11,
+        4
+      ]
+    },
+    {
+      "action": "error",
+      "frame": 7,
+      "cameraScale": [
+        0.36199095022624433,
+        0.3893805309734513
+      ],
+      "ground": 108,
+      "offset": [
+        -6,
+        4
+      ]
+    },
+    {
+      "action": "sleep",
+      "frame": 0,
+      "cameraScale": [
+        0.3827751196172249,
+        0.36666666666666664
+      ],
+      "ground": 108,
+      "offset": [
+        -14,
+        -98
+      ]
+    },
+    {
+      "action": "sleep",
+      "frame": 1,
+      "cameraScale": [
+        0.3827751196172249,
+        0.36666666666666664
+      ],
+      "ground": 108,
+      "offset": [
+        -14,
+        -98
+      ]
+    },
+    {
+      "action": "sleep",
+      "frame": 2,
+      "cameraScale": [
+        0.3827751196172249,
+        0.36666666666666664
+      ],
+      "ground": 108,
+      "offset": [
+        -13,
+        -101
+      ]
+    },
+    {
+      "action": "sleep",
+      "frame": 3,
+      "cameraScale": [
+        0.3827751196172249,
+        0.36666666666666664
+      ],
+      "ground": 108,
+      "offset": [
+        -12,
+        -101
+      ]
+    },
+    {
+      "action": "sleep",
+      "frame": 4,
+      "cameraScale": [
+        0.3827751196172249,
+        0.36666666666666664
+      ],
+      "ground": 108,
+      "offset": [
+        -15,
+        9
+      ]
+    },
+    {
+      "action": "sleep",
+      "frame": 5,
+      "cameraScale": [
+        0.3827751196172249,
+        0.36666666666666664
+      ],
+      "ground": 108,
+      "offset": [
+        -14,
+        8
+      ]
+    },
+    {
+      "action": "sleep",
+      "frame": 6,
+      "cameraScale": [
+        0.3827751196172249,
+        0.36666666666666664
+      ],
+      "ground": 108,
+      "offset": [
+        -13,
+        9
+      ]
+    },
+    {
+      "action": "sleep",
+      "frame": 7,
+      "cameraScale": [
+        0.3827751196172249,
+        0.36666666666666664
+      ],
+      "ground": 108,
+      "offset": [
+        -9,
+        8
+      ]
+    }
+  ],
+  "typingHandsMinY": 64,
+  "totalFrames": 64
+}

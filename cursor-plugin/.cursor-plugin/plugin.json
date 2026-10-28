@@ -1,0 +1,10 @@
+{
+  "name": "board-pet",
+  "version": "0.4.4",
+  "description": "灵伴桌宠：跟随本机 Cursor Agent 的思考、工具执行、完成与出错状态。",
+  "hooks": "./hooks/hooks.json"
+}
+
+
+
+

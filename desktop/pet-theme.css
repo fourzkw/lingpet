@@ -1,0 +1,7 @@
+@import './theme-tokens.css';
+/* All backgrounds are confined to controls; the pet canvas remains genuinely transparent. */
+.status,.actions button,.interaction{font-family:var(--font-ui);background:var(--surface);border:1px solid var(--line-strong);color:var(--text);border-radius:var(--control-radius);box-shadow:var(--panel-shadow)}
+.status i{background:var(--state-color,var(--state-idle))!important}.status[data-state=approval],.status[data-state=error]{border-color:var(--state-color)}
+.interaction[data-kind=pet]{background:var(--surface);color:var(--accent);border-color:var(--accent)}.actions button:hover{background:var(--accent-soft);border-color:var(--accent)}.actions button:focus-visible{outline-color:var(--accent)}
+:root[data-theme=paper-journal] .interaction{border-bottom:3px solid var(--line-strong)}:root[data-theme=pixel-workshop] .status,:root[data-theme=pixel-workshop] .interaction{box-shadow:3px 3px 0 #0006}:root[data-theme=terminal-pulse] .status{font-family:var(--font-mono);border-left:3px solid var(--state-color,var(--accent))}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}

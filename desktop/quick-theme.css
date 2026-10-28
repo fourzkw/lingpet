@@ -1,0 +1,2 @@
+#scale::-webkit-slider-runnable-track{background:var(--line-strong)}.ticks span{background:var(--line-strong)}nav button:hover,summary:hover{background:var(--accent-soft)}#error{color:var(--state-error)}
+nav button,summary{border-radius:var(--control-radius)}:root[data-theme=pixel-workshop] #scale::-webkit-slider-thumb,:root[data-theme=terminal-pulse] #scale::-webkit-slider-thumb{border-radius:1px}:root[data-theme=terminal-pulse] header{font-family:var(--font-mono)}

@@ -1,0 +1,14 @@
+# Mount the host plugin by its bare package name. DSH's web client module
+# scanner only resolves package.json for bare specifiers (see
+# dsh-client-modules `locatePkgJson`/`exactPackageSpecifier`); mounting via the
+# subpath `lingpet/plugin` silently drops the browser bundle, so the
+# DSH settings page would never receive the `settings.section` entry.
+- id: hmr
+  disabled: false
+
+- insert:
+    - id: board-ai-pet
+      name: lingpet
+      config:
+        autoStart: true
+        includeSubagents: false

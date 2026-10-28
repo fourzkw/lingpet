@@ -1,0 +1,44 @@
+{
+  "projectId": "ccacdca6-a0e3-4070-9c93-28277c10676a",
+  "baseId": "f9024192-f34a-4a39-850a-0c4098bcded9",
+  "processing": {
+    "projectId": "ccacdca6-a0e3-4070-9c93-28277c10676a",
+    "variants": [
+      "original",
+      "pixel"
+    ],
+    "background": "chroma",
+    "keyColor": [
+      0,
+      170,
+      0
+    ],
+    "threshold": 30,
+    "feather": 40,
+    "despill": true,
+    "spillTolerance": 10,
+    "fps": 12,
+    "originalSize": 384,
+    "pixelSize": 192,
+    "padding": 12,
+    "colors": 64,
+    "alphaThreshold": 160,
+    "id": "271898ff-509c-4d9d-aade-23e86b2ceade",
+    "baseId": "f9024192-f34a-4a39-850a-0c4098bcded9"
+  },
+  "inputs": {
+    "idle": {
+      "sha256": "4c142054fe6083918ce52d5e5d2b341fd896165576a4d6fed44cc8d0a83ee967",
+      "assetId": "536b8f0b-5904-4494-b8fc-3544b9f5bebd"
+    },
+    "done": {
+      "sha256": "2ec3310b25528f763fbaea02b16f13ad403f1be21cd53f438bb3897dab163d15",
+      "assetId": "25ff9cdb-605a-4a31-a49a-3b7360720425"
+    }
+  },
+  "usage": "Dedicated click and head-pat clips; original session animations are unchanged.",
+  "tasks": {
+    "pet": "c4c5b266-4b24-4c86-9472-3f77d2ccd2ff",
+    "click": "74b95710-f355-4047-93e4-0c0214ba9024"
+  }
+}
