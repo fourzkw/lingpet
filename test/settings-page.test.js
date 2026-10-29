@@ -3,6 +3,27 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 
+test('Electron preparation remains visible before the desktop starts, with determinate and indeterminate progress',async()=>{
+  const source=await readFile(new URL('../client/client.js',import.meta.url),'utf8');
+  for(const runtime of [
+    {phase:'downloading',percent:42,message:'正在下载 Electron：42%'},
+    {phase:'downloading',percent:null,message:'正在下载 Electron：已下载 5 MB'},
+    {phase:'extracting',message:'正在解压'},
+    {phase:'error',message:'下载失败，请检查网络'},
+  ]){
+    let definition,component,index=0;
+    const React={createElement:(type,props,...children)=>({type,props:props||{},children}),useSyncExternalStore:(_s,get)=>get(),useState:initial=>[index++===2?{running:false,runtime:{...runtime,time:Date.now()}}:initial,()=>{}],useEffect:()=>{}};
+    vm.runInNewContext(source,{window:{__ModuleLoader__:{load:value=>definition=value}}});
+    const form={getSnapshot:()=>({status:'ready',writable:true,value:{}})};
+    definition.factory(()=>React).apply({effect:fn=>fn(),configForms:{get:()=>form,whileServed:(_ids,fn)=>fn()},slots:{inject:(_name,fn)=>fn(),register:(_options,view)=>{component=view;}}});
+    const nodes=[];function walk(node){if(!node||typeof node!=='object')return;nodes.push(node);node.children?.flat().forEach(walk);}walk(component({form}));
+    assert.ok(nodes.some(n=>n.children.includes(runtime.message)));
+    const bar=nodes.find(n=>n.type==='progress');
+    if(runtime.phase==='error')assert.equal(bar,undefined);
+    else {assert.ok(bar);assert.equal(bar.props.value,runtime.phase==='downloading'&&runtime.percent!==null?runtime.percent:undefined);}
+  }
+});
+
 test('settings page registers one scoped settings section, edits the native form and disposes on unload',async()=>{
   let definition,registration,component,disposed=0,saved=[];
   const React={createElement:(type,props,...children)=>({type,props:props||{},children}),useSyncExternalStore:(_subscribe,get)=>get(),useState:initial=>[initial,()=>{}],useEffect:()=>{}};

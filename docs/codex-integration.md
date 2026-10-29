@@ -1,10 +1,12 @@
-# Codex 接入（0.3.1）
+# Codex 接入
+
+首次安装先阅读 [安装与接入检查](getting-started.md)。桌宠版本与根目录 package.json 一致，安装时以下载包文件名为准。
 
 Codex 原生插件使用官方生命周期 Hooks，加入现有共享桌宠服务，不需要安装 DSH 或 Cursor。工作台支持 Codex 自动跟随、全局自动跟随和指定 Codex 会话。所有形象和动作保持原样。
 
 ## ChatGPT 左侧桌宠入口
 
-0.3.1 添加本地 MCP App，使用官方 `openai/ui.entrypoints` 的 `global` 注册左侧「灵伴桌宠」，同时注册会话内的 `thread` 入口。点击入口显示管理面板，可直接启动／显示桌宠、关闭全部桌宠和打开工作台。页面无需通过对话触发操作。
+插件通过 `openai/ui.entrypoints` 的 `global` 注册「灵伴桌宠」，同时注册会话内的 `thread` 入口。在支持这些入口的本地客户端中，可使用管理面板启动／显示桌宠、关闭全部桌宠和打开工作台。
 
 管理服务由插件启动，独立于 Electron 桌宠；关闭桌宠不会关闭入口。关闭全部桌宠会写入暂停标记，阻止 Codex、Cursor 和 DSH 自动重新拉起；点击启动或打开工作台会解除暂停。启动时恢复显示已启用桌宠，全部暂停时启用第一个；列表为空时创建跟随 Codex 的桌宠。
 
@@ -14,16 +16,18 @@ Codex 原生插件使用官方生命周期 Hooks，加入现有共享桌宠服�
 
 ## 独立控制面板（备用）
 
+管理面板会分别显示「工作台连接」与宿主事件状态；工作台的接入状态同时列出 DSH、Cursor、Codex。插件加载后即可登记管理通道，无需先触发 Agent。显示「管理通道已连接，等待 Hooks 事件」说明管理入口可用，但尚未收到真实会话事件。确认插件已启用、Hooks 已审核后，新建会话并发送消息；收到事件后会自动更新状态。关闭或失去心跳后，连接状态会清除。动作试映不会被当作接入成功。
+
 运行 `node bin/board-pet.js control` 会返回本机控制页面地址。在 ChatGPT 桌面版右侧浏览器打开该地址，即可点击“启动桌宠”“关闭全部桌宠”“打开工作台”。地址含本机访问凭证，请勿分享。
 
 控制页面独立于桌宠运行，关闭全部桌宠后仍可再次启动；关闭会暂停所有来源的自动拉起。插件启用/禁用仅控制 Codex 事件接入，不等同于桌宠启停。该页面是本项目提供的本地控制入口，不会修改 ChatGPT 自身的工具栏或插件管理界面。普通浏览器也可打开。
 
 ## 安装插件
 
-Windows 需要 Node.js 22.19 或更高版本（本机已具备）。构建产物包含 Electron 和运行时依赖：
+Windows 需要 PATH 中有 Node.js 22.19 或更高版本；先运行 `node --version` 检查，安装 Node 后重启宿主。下载并解压 Codex 发布包，构建产物包含运行时依赖及 Electron 下载组件，默认不携带 Electron 二进制；首次启动需要联网下载并校验，之后复用用户缓存。以下以解压到 `C:/LingPet/codex` 为例（该目录须包含 `.agents/plugins/marketplace.json`）：
 
 ```
-codex plugin marketplace add D:/_Project/board_ai_pet/artifacts/codex-board-pet-0.3.1-win-x64
+codex plugin marketplace add "C:/LingPet/codex"
 codex plugin add board-pet@board-pet-local
 ```
 
@@ -55,4 +59,3 @@ Hook 只发送白名单内的会话、回合、工具调用 ID 和状态，不�
 官方 Hooks 没有独立的整轮失败事件，本实现不从回答正文猜测失败，也不把单个工具的非零退出误报为整轮错误。Stop 表示回合已结束，其他 Stop Hook 可继续任务，此时新回合事件会恢复处理中。仅本地执行环境能连接本机桌宠；云端或远程环境不会自动连接 Windows 的本机服务。
 
 官方接口：https://learn.chatgpt.com/docs/hooks 。CLI 与桌面版对 Hooks 的版本支持需要分别验证，安装成功不等于已经收到真实会话事件。
-

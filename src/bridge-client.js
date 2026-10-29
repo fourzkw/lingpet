@@ -16,8 +16,11 @@ export async function request(endpoint,route,body,timeout=1000) {
 }
 
 export class BridgeClient {
-  constructor({dir,instanceId,ensureRuntime,release,getIncludeSubagents,logger=console,maxQueue=128}) {
-    Object.assign(this,{dir,instanceId,ensureRuntime,release,getIncludeSubagents,logger,maxQueue}); this.queue=[];this.endpoint=null;this.closed=false;this.flushing=false;this.nextStart=0;this.onReconnect=()=>{};
+  constructor({dir,instanceId,source,channel='events',ensureRuntime,release,getIncludeSubagents,logger=console,maxQueue=128}) {
+    Object.assign(this,{dir,instanceId,source,channel,ensureRuntime,release,getIncludeSubagents,logger,maxQueue}); this.queue=[];this.endpoint=null;this.closed=false;this.flushing=false;this.nextStart=0;this.onReconnect=()=>{};
+    // A sidebar can be disposed before its first flush. Observe eager release
+    // failures now; flush still handles the original rejected promise normally.
+    this.release?.catch?.(()=>{});
   }
   start() { if(this.closed||this.timer)return;this.timer=setInterval(()=>void this.flush(),2000);this.timer.unref?.();void this.flush(); }
   enqueue(event) {
@@ -42,7 +45,7 @@ export class BridgeClient {
         if(this.endpoint) {
           try{
             const health=await request(this.endpoint,'/health');
-            if(this.release&&health.release){
+            if(this.release&&health.release&&health.distribution!=='desktop'){
               const release=await this.release;
               if(release.backendHash!==health.release.backendHash||release.frontendHash!==health.release.frontendHash){
                 const result=await request(this.endpoint,'/runtime/update',{root:release.root},30000);
@@ -56,7 +59,7 @@ export class BridgeClient {
           return;
         }
         if(this.closed)return;
-        await request(this.endpoint,'/register',{instanceId:this.instanceId});
+        await request(this.endpoint,'/register',{instanceId:this.instanceId,source:this.source,channel:this.channel});
         this.lastIncludeSubagents=undefined;
         this.onReconnect();
       }
@@ -87,7 +90,9 @@ export class BridgeClient {
       // before disconnecting and allowing the service directory to be removed.
       await this.pendingFlush;
       if(disconnect)await this.disconnect();
-      this.endpoint=null;
+      // Hot reload defers disconnect until the replacement has had time to
+      // claim the lease. Retain the endpoint for that delayed notification.
+      if(disconnect)this.endpoint=null;
     })();
     return this.closing;
   }

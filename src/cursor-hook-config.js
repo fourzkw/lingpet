@@ -29,3 +29,16 @@ export async function installCursorUserHooks(file,pluginRoot){
   const temp=file+'.board-pet-'+process.pid+'.tmp';await writeFile(temp,next);await rename(temp,file);
   return {changed:true};
 }
+
+export function removeCursorHooks(existing,pluginRoot){
+  if(!existing||typeof existing!=='object'||Array.isArray(existing)||existing.hooks&&(typeof existing.hooks!=='object'||Array.isArray(existing.hooks)))throw Error('Cursor Hooks 配置无效');
+  const script=path.join(pluginRoot,'scripts/hook.cjs').replaceAll('\\','/');
+  const hooks={...existing.hooks};let removed=0;
+  for(const event of CURSOR_HOOKS){
+    if(!Array.isArray(hooks[event]))continue;
+    const expected=`node "${script}" ${event}`;
+    hooks[event]=hooks[event].filter(h=>{const owned=typeof h.command==='string'&&h.command.replaceAll('\\','/')===expected;if(owned)removed++;return !owned;});
+    if(!hooks[event].length)delete hooks[event];
+  }
+  return {value:removed?{...existing,hooks}:existing,removed};
+}

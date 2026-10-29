@@ -63,6 +63,7 @@ type Review struct {
 	At     time.Time `json:"at"`
 }
 type Record struct {
+	Stats      *PetStats `json:"stats"`
 	ID         string    `json:"id"`
 	Repository string    `json:"repository"`
 	Tag        string    `json:"tag"`

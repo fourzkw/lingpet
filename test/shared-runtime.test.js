@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp,mkdir,writeFile,readFile,rm,cp} from 'node:fs/promises';
 import path from 'node:path';
-import {prepareSharedRuntime,activeSharedRelease,rollbackSharedRuntime,compareVersions} from '../src/shared-runtime.js';
+import {prepareSharedRuntime,activeSharedRelease,rollbackSharedRuntime,compareVersions,confirmRunningSharedRuntime} from '../src/shared-runtime.js';
+import {StateStore} from '../src/state-store.js';
+import {startLocalServer} from '../src/local-server.js';
 
 async function fixture(root,version,text='same',protocol=1){
   await mkdir(root,{recursive:true});
@@ -10,6 +12,19 @@ async function fixture(root,version,text='same',protocol=1){
   await writeFile(path.join(root,'package.json'),JSON.stringify({name:'dsh-board-pet',version,boardPetProtocol:protocol}));
   for(const file of ['src/core.js','desktop/main.js','desktop/preload.cjs','assets/test.bin','bin/cli.js'])await writeFile(path.join(root,file),text);
 }
+
+test('healthy releases cannot be rolled back by late starters and repair stale active pointers and block lists',async()=>{
+ const root=await mkdtemp(path.join(process.cwd(),'.test-data-shared-health-')),dir=path.join(root,'data'),copyDependencies=async()=>{};let server;
+ try{
+  const a=path.join(root,'a'),b=path.join(root,'b');await fixture(a,'1.0.0');await fixture(b,'2.0.0');
+  const first=await prepareSharedRuntime(dir,{root:a,copyDependencies}),next=await prepareSharedRuntime(dir,{root:b,copyDependencies});
+  server=await startLocalServer(new StateStore(),dir,{getRelease:()=>next});
+  assert.equal(await rollbackSharedRuntime(dir,next.root),null);assert.equal((await activeSharedRelease(dir)).root,next.root);
+  const file=path.join(dir,'shared/active.json'),stale={protocol:1,active:path.basename(first.root),previous:null,version:first.version,backendHash:first.backendHash,frontendHash:first.frontendHash,blocked:[path.basename(next.root)]};await writeFile(file,JSON.stringify(stale));
+  await confirmRunningSharedRuntime(dir);assert.equal((await activeSharedRelease(dir)).root,next.root);assert.deepEqual(JSON.parse(await readFile(file,'utf8')).blocked,[]);
+  assert.equal((await prepareSharedRuntime(dir,{root:a,copyDependencies})).root,next.root);
+ }finally{await server?.close();await rm(root,{recursive:true,force:true});}
+});
 test('concurrent DSH and Cursor installs reuse one immutable runtime that survives adapter removal',async()=>{
   const root=await mkdtemp(path.join(process.cwd(),'.test-data-shared-'));let copies=0;
   try{

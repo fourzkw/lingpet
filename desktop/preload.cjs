@@ -1,5 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('pet', {
+  integrations:body=>ipcRenderer.invoke('pet:integrations',body),
   system:body=>ipcRenderer.invoke('pet:system',body),
   onSystemUpdate:callback=>{const listener=(_,value)=>callback(value);ipcRenderer.on('pet:system-update',listener);return()=>ipcRenderer.removeListener('pet:system-update',listener);},
   market: body => ipcRenderer.invoke('pet:market',body),

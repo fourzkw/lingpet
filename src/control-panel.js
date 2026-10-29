@@ -6,6 +6,7 @@ import {ensureRuntime} from './bootstrap.js';
 import {readEndpoint,request} from './bridge-client.js';
 import {PACKAGE_ROOT} from './paths.js';
 import {normalizeTheme} from './ui-themes.js';
+import {readRuntimeProgress} from './runtime-progress.js';
 
 // Separate from Electron so the Start button remains available after Quit.
 export async function startControlPanel(dir,{start=ensureRuntime}={}){
@@ -16,7 +17,8 @@ export async function startControlPanel(dir,{start=ensureRuntime}={}){
     let theme=normalizeTheme();try{theme=normalizeTheme(JSON.parse(await readFile(path.join(dir,'settings.json'),'utf8')).global?.theme);}catch{}
     const endpoint=await readEndpoint(dir);
     if(endpoint)try{const health=await request(endpoint,'/health');return {running:true,state:health.state,theme};}catch{}
-    return {running:false,theme};
+    const runtime=await readRuntimeProgress(dir);
+    return {running:false,theme,...(runtime?{runtime}:{})};
   };
   const server=http.createServer(async(req,res)=>{
     const send=(code,value,headers={})=>{res.writeHead(code,{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...headers});res.end(value);};

@@ -11,3 +11,5 @@ export async function publishDirectory(from,to,{move=rename,platform=process.pla
     }
   }
 }
+// The same bounded rename retry applies to atomic file replacement on Windows.
+export const atomicRename=publishDirectory;

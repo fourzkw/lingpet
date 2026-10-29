@@ -35,7 +35,7 @@ export async function startCursorService(dir,{autoStart=true,ownerCheck=cursorRu
   if(!lock)return null;
   await lock.writeFile(String(process.pid));
   let server,timer,stopping=false,closing,busy=false,lastEvent=Date.now(),ownerMisses=0;
-  const client=new BridgeClient({dir,instanceId:'cursor-'+randomUUID(),release:describeRelease(),ensureRuntime:autoStart?()=>ensureRuntime(dir):undefined,logger:{warn(){}}});
+  const client=new BridgeClient({dir,source:'cursor',instanceId:'cursor-'+randomUUID(),release:describeRelease(),ensureRuntime:autoStart?()=>ensureRuntime(dir):undefined,logger:{warn(){}}});
   const observer=new CursorObserver(event=>client.enqueue(event),{instanceId:client.instanceId});
   client.onReconnect=()=>observer.replay();
   const close=()=>{

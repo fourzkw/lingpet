@@ -1,6 +1,6 @@
 // Characters own appearances; appearances declare the render variants available.
 export const VARIANTS=[{id:'original',name:'原图'},{id:'pixel',name:'像素'}];
-export const CHARACTERS=[
+export const BUILTIN_CHARACTERS=[
   {id:'claude',name:'Claude',description:'Claude',tag:'CLAUDE',appearances:[
     {id:'classic',name:'Claude',asset:'claude',variants:['pixel'],pixelSize:128},
   ]},
@@ -12,6 +12,9 @@ export const CHARACTERS=[
     {id:'cloud-dragon',name:'云羽龙姬',asset:'chatgpt-dragon',variants:['original','pixel'],pixelSize:192,doneMs:5250},
   ]},
 ];
+export const CHARACTERS=structuredClone(BUILTIN_CHARACTERS);
+let bundled=new Set(BUILTIN_CHARACTERS.flatMap(c=>c.appearances.map(a=>a.asset))),savedEntries=[],savedRoles=[];
+export function configureBundledAssets(assets){bundled=new Set(assets);setCustomAppearances(savedEntries,savedRoles);}
 // These unfinished media jobs were stopped by the user. Retain their design
 // metadata without advertising unavailable assets in the installed workbench.
 export const DRAFT_APPEARANCES=[
@@ -19,7 +22,9 @@ export const DRAFT_APPEARANCES=[
 ];
 export const CHARACTER_IDS=CHARACTERS.map(character=>character.id);
 export function setCustomAppearances(entries=[],roles=[]){
-  for(let i=CHARACTERS.length-1;i>=0;i--)if(CHARACTERS[i].community||CHARACTERS[i].customRole)CHARACTERS.splice(i,1);
+  savedEntries=entries;savedRoles=roles;
+  CHARACTERS.splice(0,CHARACTERS.length,...structuredClone(BUILTIN_CHARACTERS).map(c=>({...c,appearances:c.appearances.filter(a=>bundled.has(a.asset))})).filter(c=>c.appearances.length));
+  for(const base of BUILTIN_CHARACTERS)if(entries.some(e=>e.character===base.id)&&!CHARACTERS.some(c=>c.id===base.id))CHARACTERS.push({...base,appearances:[]});
   for(const role of roles)if(/^custom-[a-z0-9-]{3,64}$/.test(role.id)&&!CHARACTERS.some(c=>c.id===role.id))CHARACTERS.push({...role,customRole:true,tag:'CUSTOM',appearances:[]});
   for(const entry of entries)if(entry.community&&/^community-[a-z0-9-]{3,64}$/.test(entry.character)&&!CHARACTERS.some(c=>c.id===entry.character))CHARACTERS.push({id:entry.character,name:entry.characterName||entry.package?.name||'社区桌宠',description:'社区作品',tag:'COMMUNITY',community:true,appearances:[]});
   CHARACTER_IDS.splice(0,CHARACTER_IDS.length,...CHARACTERS.map(c=>c.id));
@@ -32,12 +37,12 @@ export function setCustomAppearances(entries=[],roles=[]){
   }
 }
 export function characterInfo(id){
-  if(id==='chatgpt-dragon')return {...CHARACTERS[2],...CHARACTERS[2].appearances[1]};
+  if(id==='chatgpt-dragon'){const role=CHARACTERS.find(c=>c.id==='chatgpt');if(role)return {...role,...role.appearances.find(a=>a.id==='cloud-dragon')};}
   return CHARACTERS.find(character=>character.id===id)??CHARACTERS[0];
 }
 export function appearanceInfo(pet={}){
   const character=characterInfo(pet.character);
-  return character.appearances.find(item=>item.id===pet.appearance)??(pet.character==='chatgpt-dragon'?character.appearances[1]:character.appearances[0]);
+  return character.appearances.find(item=>item.id===pet.appearance)??(pet.character==='chatgpt-dragon'?character.appearances.find(a=>a.id==='cloud-dragon'):character.appearances[0]);
 }
 export function appearanceSelection(value={},current={}){
   for(const key of ['character','appearance','variant'])if(key in value&&typeof value[key]!=='string')throw new Error('无效的外观选择');

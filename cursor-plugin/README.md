@@ -6,7 +6,7 @@ Windows 本机 Cursor Agent Chat 接入。插件用官方 Hooks 观察事件，�
 
 ## 安装
 
-本目录是插件模板，需先在主项目执行 `npm ci` 和 `npm run build:cursor`。构建结果包含 `runtime/`、生产依赖、当前平台 Electron 和角色素材；不包含用户配置、令牌或会话数据。构建包仅适用于其 build.json 指明的平台与架构。
+本目录是插件模板，需先在主项目执行 `npm ci` 和 `npm run build:cursor`。构建结果包含 `runtime/`、生产依赖、Electron 下载组件和 Claude 像素素材；默认不携带 Electron 二进制，首次启动联网下载并校验，之后复用用户缓存；不包含用户配置、令牌或会话数据。构建包仅适用于其 build.json 指明的平台与架构。
 
 将构建结果的整个目录放到 `~/.cursor/plugins/local/board-pet`。主项目也提供安装命令：
 

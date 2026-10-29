@@ -4,16 +4,20 @@ import { validateEvent } from './protocol.js';
 export class StateStore extends EventEmitter {
   constructor({ now = Date.now, staleMs = 45000, maxSessions = 200 } = {}) {
     super(); this.now = now; this.staleMs = staleMs; this.maxSessions = maxSessions;
-    this.sessions = new Map(); this.instances = new Map(); this.selected = null; this.follow = 'attention'; this.focused = null;
+    this.sessions = new Map(); this.instances = new Map(); this.connections = new Map(); this.selected = null; this.follow = 'attention'; this.focused = null;
   }
-  register(id) {
+  register(id,source,channel='events') {
     if (typeof id !== 'string' || !id || id.length > 256) throw new Error('无效的来源实例');
+    if(source!==undefined&&!['dsh','cursor','codex'].includes(source))throw new Error('无效的连接来源');
+    if(!['events','management'].includes(channel))throw new Error('无效的连接通道');
+    if(source)this.connections.set(id,{instanceId:id,source,channel});
     this.instances.set(id, this.now());
     this.emit('change', this.snapshot());
   }
   heartbeat(id) { if (!this.instances.has(id)) return false; this.instances.set(id, this.now()); return true; }
   disconnect(id) {
     this.instances.delete(id);
+    this.connections.delete(id);
     for (const session of this.sessions.values()) if (session.instanceId === id) session.connected = false;
     this.emit('change', this.snapshot());
   }
@@ -24,6 +28,7 @@ export class StateStore extends EventEmitter {
     if (previous && previous.turn !== null && event.turn !== null && event.turn < previous.turn) return false;
     const session = { ...event, key, connected: true, updatedAt: this.now() };
     this.instances.set(event.instanceId, this.now());
+    this.connections.set(event.instanceId,{instanceId:event.instanceId,source:event.source,channel:'events'});
     this.sessions.set(key, session);
     if (!previous || event.state !== previous.state || event.turn !== previous.turn) this.focused = key;
     if (this.sessions.size > this.maxSessions) {
@@ -45,6 +50,7 @@ export class StateStore extends EventEmitter {
     let changed = false;
     for (const [id, time] of this.instances) if (this.now() - time > this.staleMs) {
       this.instances.delete(id); changed = true;
+      this.connections.delete(id);
       for (const s of this.sessions.values()) if (s.instanceId === id) s.connected = false;
     }
     if (changed) this.emit('change', this.snapshot());
@@ -59,7 +65,7 @@ export class StateStore extends EventEmitter {
     if (state === 'done' && this.now()-target.updatedAt > 1800) state = 'idle';
     return { ...target, state };
   }
-  snapshot() { return { current: this.current(), sessions: [...this.sessions.values()].sort((a,b)=>b.updatedAt-a.updatedAt), selected: this.selected, instances: this.instances.size }; }
+  snapshot() { return { current: this.current(), sessions: [...this.sessions.values()].sort((a,b)=>b.updatedAt-a.updatedAt), selected: this.selected, instances: this.instances.size,connections:[...this.connections.values()] }; }
   restore(snapshot){
     if(!snapshot||!Array.isArray(snapshot.sessions))return;
     for(const session of snapshot.sessions.slice(-this.maxSessions)){

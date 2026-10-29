@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
 import {PNG} from 'pngjs';
-import {interactionDuration,readyInteraction,paintInteraction} from '../desktop/interaction-actions.js';
+import {interactionDuration,readyInteraction,paintInteraction,readyInteractionManifest} from '../desktop/interaction-actions.js';
 import {createPetReaction} from '../desktop/pet-interaction.js';
 
 const assets=['claude','deepseek-h3','chatgpt-white-dragon-h3','chatgpt-dragon'];
 for(const asset of assets)test(`${asset} has distinct complete one-shot click and pet assets`,async()=>{
+  await readyInteractionManifest(asset);
   const root=path.resolve('assets/interactions',asset),manifest=JSON.parse(await readFile(path.join(root,'manifest.json'),'utf8'));
   const sources=JSON.parse(await readFile(path.join(root,'provenance.json'),'utf8'));
   assert.notEqual(sources.tasks.click,sources.tasks.pet,'two independent generation tasks');

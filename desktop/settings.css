@@ -1,3 +1,10 @@
 @import url(./ui-theme.css);
 @import url(./workbench.css);
 @import url(./workbench-motion.css);
+.onboarding{margin-bottom:24px}
+
+.market-pet-stats{display:flex;flex-wrap:wrap;gap:8px 18px;font-variant-numeric:tabular-nums}
+#integrationExecutableRow .quiet{display:block;margin-top:4px;line-height:1.6}
+#integrationAdvanced:not([open])>label{display:none}
+.integration-complete{width:min(560px,calc(100vw - 40px))}.integration-complete li{margin:14px 0;line-height:1.8}
+.storage-location{overflow-wrap:anywhere;padding:12px 16px;border:1px solid var(--line);border-radius:var(--control-radius);background:var(--surface);font-size:13px;line-height:1.7}

@@ -1,6 +1,6 @@
 {
   "name": "lingpet",
-  "version": "0.6.8",
+  "version": "0.7.14",
   "boardPetProtocol": 1,
   "description": "灵伴 LingPet：跟随 AI 会话的桌面伙伴，支持形象创作与多桌宠管理",
   "type": "module",
@@ -19,12 +19,30 @@
     "src",
     "desktop",
     "bin",
-    "assets",
     "cordis.patch.yml",
     "README.md",
     "docs",
     "client",
-    "skills"
+    "skills",
+    "assets/brand/app-128.png",
+    "assets/brand/app-16.png",
+    "assets/brand/app-24.png",
+    "assets/brand/app-256.png",
+    "assets/brand/app-32.png",
+    "assets/brand/app-48.png",
+    "assets/brand/app-512.png",
+    "assets/brand/app-64.png",
+    "assets/brand/app.ico",
+    "assets/brand/app.svg",
+    "assets/brand/mark.svg",
+    "assets/claude/actions-v2/atlas.png",
+    "assets/claude/states.png",
+    "assets/interactions/claude/click.png",
+    "assets/interactions/claude/idle.png",
+    "assets/interactions/claude/manifest.js",
+    "assets/interactions/claude/manifest.json",
+    "assets/interactions/claude/pet.png",
+    "assets/tray.png"
   ],
   "dsh": {
     "bundle": {
@@ -42,6 +60,8 @@
     "dsh": ">=0.2.1-rc.2 <0.3.0"
   },
   "scripts": {
+    "build:desktop": "node scripts/build-desktop.mjs",
+    "test:desktop-first": "node --test test/desktop-first.test.js",
     "start": "electron desktop/main.js",
     "demo": "electron desktop/main.js --demo",
     "test": "node --test test/*.test.js",
@@ -51,10 +71,11 @@
     "build:cursor": "node scripts/build-cursor-plugin.mjs",
     "build:cursor-sidebar": "node scripts/build-cursor-extension.mjs",
     "build:codex": "node scripts/build-codex-plugin.mjs",
+    "build:appearances": "node scripts/build-appearance-packs.mjs",
     "test:codex": "node --test test/codex.test.js",
     "prepare:assets": "node scripts/prepare-assets.mjs",
     "check": "node scripts/check.mjs",
-    "prepack": "node scripts/check.mjs",
+    "prepack": "node scripts/check.mjs && node scripts/prepare-release-assets.mjs",
     "market:dev": "go -C market run .",
     "build:market": "node scripts/build-market.mjs",
     "test:market": "go -C market test ./..."
@@ -66,11 +87,13 @@
     "electron": "45.0.0",
     "pngjs": "^7.0.0",
     "yauzl": "^3.4.0",
-    "yazl": "^3.3.1"
+    "yazl": "^3.3.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "~4.0.5",
-    "esbuild": "^0.28.2"
+    "esbuild": "^0.28.2",
+    "pnpm": "10.34.9"
   },
   "license": "UNLICENSED",
   "productName": "灵伴"

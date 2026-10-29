@@ -1,13 +1,14 @@
-import {mkdir,readFile,writeFile,rename,readdir} from 'node:fs/promises';
+import {mkdir,readFile,writeFile,readdir} from 'node:fs/promises';
 import path from 'node:path';
 import {randomUUID,createHash} from 'node:crypto';
 import {withInstallLock} from '../install-lock.js';
+import {atomicRename} from '../atomic-directory.js';
 
 export const STATES=['idle','thinking','working','input','approval','done','error','sleep'];
 export const digest=data=>createHash('sha256').update(data).digest('hex');
 export function safeId(value){if(typeof value!=='string'||! /^[a-zA-Z0-9_-]{1,100}$/.test(value))throw new Error('无效的资源 ID');return value;}
 export async function json(file,fallback){try{return JSON.parse(await readFile(file,'utf8'));}catch(e){if(e.code==='ENOENT'&&fallback!==undefined)return fallback;throw e;}}
-export async function save(file,value){await mkdir(path.dirname(file),{recursive:true});const temp=file+'.'+randomUUID()+'.tmp';await writeFile(temp,JSON.stringify(value,null,2),{mode:0o600});await rename(temp,file);}
+export async function save(file,value){await mkdir(path.dirname(file),{recursive:true});const temp=file+'.'+randomUUID()+'.tmp';await writeFile(temp,JSON.stringify(value,null,2),{mode:0o600});await atomicRename(temp,file);}
 export class CreationStore{
   constructor(dir){this.root=path.join(dir,'creation');}
   file(group,id){return path.join(this.root,group,safeId(id)+'.json');}

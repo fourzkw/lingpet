@@ -7,8 +7,26 @@ import {createPetControl} from '../src/sidebar-control.js';
 import {startLocalServer} from '../src/local-server.js';
 import {StateStore} from '../src/state-store.js';
 import {PetRegistry} from '../src/pet-registry.js';
-import {mkdtemp,rm,unlink,readFile} from 'node:fs/promises';
+import {mkdtemp,rm,unlink,readFile,writeFile} from 'node:fs/promises';
 import path from 'node:path';
+
+test('Codex start returns before download completes, status exposes progress and asynchronous failures',async()=>{
+ const dir=await mkdtemp(path.resolve('.test-data-sidebar-progress-'));
+ let release,entered;const gate=new Promise(r=>release=r),started=new Promise(r=>entered=r);
+ const control=createPetControl(dir,{backgroundStart:true,start:async()=>{entered();await gate;throw Error('模拟下载失败');}});
+ const server=createSidebarServer(control),client=new Client({name:'progress-regression',version:'1'}),[a,b]=InMemoryTransport.createLinkedPair();
+ try{
+   await server.connect(a);await client.connect(b);
+   const initial=await client.callTool({name:'board_pet_open',arguments:{}});assert.match(initial.content[0].text,/首次启动需要联网下载 Electron/);
+   const response=await client.callTool({name:'board_pet_control',arguments:{action:'start'}});
+   assert.equal(response.structuredContent.pending,true);await started;
+   await writeFile(path.join(dir,'runtime-status.json'),JSON.stringify({phase:'downloading',percent:42,message:'Electron 下载 42%'}));
+   const polling=await client.callTool({name:'board_pet_control',arguments:{action:'status'}});
+   assert.equal(polling.structuredContent.runtime.percent,42);assert.match(polling.content[0].text,/42%/);
+   release();let result;for(let i=0;i<20;i++){await new Promise(r=>setTimeout(r,5));result=await control.status();if(!result.pending)break;}
+   assert.equal(result.pending,false);assert.equal(result.error,'模拟下载失败');
+ }finally{release();await client.close();await server.close();await rm(dir,{recursive:true,force:true});}
+});
 
 test('sidebar advertises global entrypoint, embeds offline UI, and executes control through MCP',async()=>{
   const actions=[];const server=createSidebarServer({run:async action=>{actions.push(action);if(action==='settings')throw new Error('工作台不可用');return {running:action==='start',pets:[]};}});

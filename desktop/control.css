@@ -4,3 +4,5 @@ main{max-width:660px;padding:48px 28px;margin:auto}.brand{display:flex;align-ite
 #settings{color:var(--accent-text)}section{border-radius:var(--radius)}button,.brand:before{border-radius:var(--control-radius)}
 
 .brand:before{background:var(--accent);border:0;border-radius:0;mask:url(./brand.svg) center/contain no-repeat;-webkit-mask:url(./brand.svg) center/contain no-repeat}.brand-mark{display:block;width:32px;height:32px;flex:none;color:var(--accent)}.brand:has(.brand-mark):before{display:none}
+
+#runtimeProgress{width:100%;accent-color:var(--accent,#b4472f);margin-bottom:16px}#runtimeProgress[hidden]{display:none}

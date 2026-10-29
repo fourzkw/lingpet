@@ -7,12 +7,16 @@ import {dataDirectory} from './paths.js';
 import {CreationService} from './creation/service.js';
 import {registerCreationTools} from './creation/tools.js';
 
-export const SIDEBAR_URI='ui://board-pet/control.html';
-export function createSidebarServer(control=createPetControl(dataDirectory()),creation=new CreationService(dataDirectory())){
+export const SIDEBAR_URI='ui://board-pet/control-0.6.19.html';
+export function createSidebarServer(control=createPetControl(dataDirectory(),{backgroundStart:true}),creation=new CreationService(dataDirectory())){
   const icon='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="#94ac81" d="M7 13 5 3l9 6h4l9-6-2 10v9c0 9-18 9-18 0Z"/><circle cx="12" cy="18" r="2"/><circle cx="21" cy="18" r="2"/></svg>');
-  const server=new McpServer({name:'board-pet',version:'0.4.4',title:'灵伴桌宠',icons:[{src:icon,mimeType:'image/svg+xml',sizes:['any']} ]});
+  const server=new McpServer({name:'board-pet',version:'0.6.19',title:'灵伴桌宠',icons:[{src:icon,mimeType:'image/svg+xml',sizes:['any']} ]});
   const result=async action=>{
-    try{return {content:[],structuredContent:await control.run(action)};}
+    try{
+      const state=await control.run(action);
+      const explanation=state.runtime?.message||'首次启动需要联网下载 Electron，面板会显示下载和解压进度；已有运行时会直接复用。';
+      return {content:[{type:'text',text:(state.pending?'桌宠正在后台准备。':state.running?'桌宠正在运行。':'桌宠尚未运行。')+' '+explanation+(state.error?' '+state.error:'')}],structuredContent:state};
+    }
     catch(error){return {isError:true,content:[{type:'text',text:error.message}]};}
   };
   registerAppTool(server,'board_pet_open',{
@@ -32,8 +36,3 @@ export function createSidebarServer(control=createPetControl(dataDirectory()),cr
   registerCreationTools(server,creation);
   return server;
 }
-
-
-
-
-

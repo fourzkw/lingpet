@@ -24,16 +24,18 @@ type Config struct {
 	Dev                                                                              bool
 }
 type Server struct {
-	releaseMu sync.Mutex
-	uploadMu  sync.Mutex
-	authMu    sync.RWMutex
-	submitMu  sync.Mutex
-	rateMu    sync.Mutex
-	rates     map[string]rateWindow
-	cfg       Config
-	store     *Store
-	github    GitHub
-	client    *http.Client
+	statsMu      sync.Mutex
+	statsLoading map[string]bool
+	releaseMu    sync.Mutex
+	uploadMu     sync.Mutex
+	authMu       sync.RWMutex
+	submitMu     sync.Mutex
+	rateMu       sync.Mutex
+	rates        map[string]rateWindow
+	cfg          Config
+	store        *Store
+	github       GitHub
+	client       *http.Client
 }
 
 func (s *Server) admin(login string) bool {
@@ -168,11 +170,17 @@ func (s *Server) routes() http.Handler {
 		if len(out) > 200 {
 			out = out[:200]
 		}
+		s.populatePetStats(r.Context(), out)
 		respond(w, 200, out)
 	})
 	mux.HandleFunc("GET /api/versions/{id}", func(w http.ResponseWriter, r *http.Request) {
 		a, ok := s.visible(w, r)
 		if ok {
+			if a.Status == "approved" {
+				ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
+				a.Stats = s.petStats(ctx, a)
+				cancel()
+			}
 			respond(w, 200, a)
 		}
 	})

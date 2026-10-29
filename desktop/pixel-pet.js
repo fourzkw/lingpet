@@ -1,7 +1,6 @@
 // Existing characters use 128px pose clips; the new dragon uses 192px video sprites.
 // Display scaling preserves the pixel edges of each character's own grid.
 import {paintClaudeAction,readyClaudeActions} from './claude-actions.js';
-import {paintCompanionAction,readyCompanionActions} from './companion-actions.js';
 import {paintDragonAction,readyDragonActions} from './dragon-actions.js';
 import {paintQVideoAction} from './q-video-actions.js';
 export const PIXEL_SIZE=128;
@@ -88,7 +87,7 @@ function atlasFor(character){
   return atlas;
 }
 export async function readyPixelAssets(){
-  await Promise.all([atlasFor('claude').decode(),readyClaudeActions(),readyCompanionActions(),readyDragonActions()]);
+  await Promise.all([atlasFor('claude').decode(),readyClaudeActions()]);
 }
 function baseFor(character,state){
   const key=`${character}:${state}`;
@@ -108,7 +107,6 @@ function baseFor(character,state){
 export function paintPixelPet(ctx,character,state,elapsed,width,height){
   if(paintQVideoAction(ctx,character,state,elapsed,width,height))return;
   if(character==='chatgpt-dragon'){paintDragonAction(ctx,state,elapsed,width,height);return;}
-  if(paintCompanionAction(ctx,character,state,elapsed,width,height))return;
   if(character==='claude'&&paintClaudeAction(ctx,state,elapsed,width,height))return;
   const kind='claude';
   const pose=STATES.includes(state)?state:'idle';

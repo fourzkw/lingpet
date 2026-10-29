@@ -3,7 +3,7 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { mkdir, writeFile, rename, readFile, unlink } from 'node:fs/promises';
 import { endpointPath } from './paths.js';
 
-export async function startLocalServer(store, dir, { port = 0, getRelease, updateRuntime, quitPet, showDashboard,petManager,reloadAppearances } = {}) {
+export async function startLocalServer(store, dir, { port = 0, getRelease, updateRuntime, quitPet, showDashboard,petManager,reloadAppearances,distribution='plugin' } = {}) {
   await mkdir(dir, { recursive: true });
   const token = randomBytes(32).toString('hex');
   const equal = candidate => typeof candidate === 'string' && /^[a-f0-9]{64}$/.test(candidate) && timingSafeEqual(Buffer.from(candidate), Buffer.from(token));
@@ -12,7 +12,8 @@ export async function startLocalServer(store, dir, { port = 0, getRelease, updat
     // This is a Node-to-Node channel; arbitrary browser origins are never accepted.
     if (req.headers.origin || !['127.0.0.1', '::ffff:127.0.0.1', '::1'].includes(req.socket.remoteAddress)) return reply(403,{error:'禁止的请求来源'});
     if (!equal(req.headers.authorization?.replace(/^Bearer /,''))) return reply(401,{error:'连接凭证无效'});
-    if (req.method === 'GET' && req.url === '/health') return reply(200,{version:1,name:'board-ai-pet',...(getRelease?{release:getRelease()}:{}),instances:store.instances.size,sessions:store.sessions.size,state:store.current().state});
+    if (req.method === 'GET' && req.url === '/health') return reply(200,{version:1,name:'board-ai-pet',distribution,...(getRelease?{release:getRelease()}:{}),instances:store.instances.size,sessions:store.sessions.size,state:store.current().state});
+    if(req.method==='GET'&&req.url==='/connections')return reply(200,{connections:store.snapshot?.().connections||[],sessions:[...store.sessions.values()].map(({source,connected,state})=>({source,connected,state}))});
     if(req.method==='GET'&&req.url==='/pets'&&petManager)return reply(200,petManager.list());
     if (req.method !== 'POST') return reply(404,{error:'接口不存在'});
     try {
@@ -20,7 +21,7 @@ export async function startLocalServer(store, dir, { port = 0, getRelease, updat
       for await (const chunk of req) { size+=chunk.length; if(size>16384) { reply(413,{error:'事件过大'}); req.resume(); return; } chunks.push(chunk); }
       const body=JSON.parse(Buffer.concat(chunks).toString('utf8'));
       switch(req.url) {
-        case '/register': store.register(body.instanceId); return reply(200,{ok:true});
+        case '/register': store.register(body.instanceId,body.source,body.channel); return reply(200,{ok:true});
         case '/heartbeat': return reply(store.heartbeat(body.instanceId)?200:409,{ok:store.instances.has(body.instanceId)});
         case '/event': return reply(200,{ok:true,accepted:store.accept(body)});
         case '/disconnect': store.disconnect(body.instanceId); return reply(200,{ok:true});

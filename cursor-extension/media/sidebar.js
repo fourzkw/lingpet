@@ -16,10 +16,13 @@ window.addEventListener('message',event=>{
   const previous=selection.value;pets=m.pets||[];selection.replaceChildren();
   for(const item of pets){const option=document.createElement('option');option.value=item.id;option.textContent=item.name;selection.append(option);}
   if(pets.some(p=>p.id===previous))selection.value=previous;describePet();
-  document.getElementById('status').textContent=pet.error?'状态异常':running?'桌宠运行中':'桌宠已关闭';
+  const runtime=pet.runtime,preparing=!running&&['downloading','extracting'].includes(runtime?.phase);
+  document.getElementById('status').textContent=pet.error?'状态异常':running?'桌宠运行中':preparing?'正在准备 Electron':'桌宠已关闭';
   document.getElementById('dot').classList.toggle('running',running);
-  document.getElementById('detail').textContent=pet.error|| (running?`PID ${pet.pid} · ${pet.sessions} 个会话 · ${pet.instances} 个来源`:'点击下方按钮启动桌宠。');
-  document.getElementById('bridge').textContent='Cursor 事件：'+(m.bridge?'桥接已连接':m.hookRegistration);
+  document.getElementById('detail').textContent=pet.error|| (running?`PID ${pet.pid} · ${pet.sessions} 个会话 · ${pet.instances} 个来源`:runtime?.message||'点击下方按钮启动桌宠。');
+  const progress=document.getElementById('runtimeProgress');progress.hidden=!preparing;
+  if(runtime?.phase==='downloading'&&Number.isFinite(runtime.percent))progress.value=runtime.percent;else progress.removeAttribute('value');
+  document.getElementById('bridge').textContent='工作台连接：'+(m.pet.running?'已连通':'未连接')+'；Cursor 事件：'+(m.connection?.label||m.hookRegistration)+(m.connection?.hint?'。'+m.connection.hint:'');
   for(const button of buttons)button.disabled=m.busy||(button.dataset.action==='stop'&&!running)||(button.dataset.action.startsWith('pet-')&&(!running||(button.dataset.action!=='pet-create'&&!selection.value)));
   updatePetActions();
   document.getElementById('start').textContent=m.busy?'正在处理…':running?'显示桌宠':'启动桌宠';

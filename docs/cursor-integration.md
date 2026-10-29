@@ -10,6 +10,6 @@
 
 统一协议增加来源白名单 dsh/cursor，缺失来源默认 dsh，兼容原 DSH 桥接。工作台显示来源并支持来源筛选。桌宠、设置、动画仍由原运行时统一管理。
 
-构建：`node scripts/build-cursor-plugin.mjs artifacts/cursor-board-pet-0.1.0`。构建器复制运行时代码、素材和 package-lock 中已安装的生产依赖，包含当前平台 Electron。每次使用新的输出目录，不混入旧文件。安装：`node scripts/install-cursor-plugin.mjs <构建目录>`。插件依赖 PATH 中 Node.js >=22.19，首版仅面向 Windows 本机。
+构建：`node scripts/build-cursor-plugin.mjs artifacts/cursor-board-pet-0.1.0`。构建器复制运行时代码、素材和 package-lock 中已安装的生产依赖，保留 Electron 下载组件与校验清单，默认不携带运行时二进制；首次启动联网下载，之后复用用户缓存。每次使用新的输出目录，不混入旧文件。安装：`node scripts/install-cursor-plugin.mjs <构建目录>`。插件依赖 PATH 中 Node.js >=22.19，首版仅面向 Windows 本机。
 
 测试：`npm run test:cursor` 和 `npm test`。包括真实 Hook stdin/stdout 子进程、本机服务认证与来源隔离、并行工具/重复事件/旧回合、重连补发、心跳、停止桥接不关闭共享桌宠。真实 Cursor 会话须在已安装兼容版本中进一步验收；自动测试不调用模型、不发送任务到用户的 Cursor 会话。

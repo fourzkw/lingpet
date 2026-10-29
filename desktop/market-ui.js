@@ -9,6 +9,8 @@ export function initMarketUI({snapshot,update,toast}){
  const status=value=>$('marketStatus').textContent=value;
  const text=(tag,value)=>{const node=document.createElement(tag);node.textContent=value;return node;};
  const button=(label,fn,kind='secondary')=>{const b=text('button',label);b.className='button '+kind;b.onclick=()=>Promise.resolve().then(fn).catch(e=>status(e.message));return b;};
+ const count=value=>Number.isSafeInteger(value)&&value>=0?value.toLocaleString('zh-CN'):'暂不可用';
+ const stats=record=>{const row=document.createElement('p');row.className='market-pet-stats';row.title='下载量为当前版本分享包的 GitHub 下载次数；Star 为作者仓库获星数';row.append(text('span','↓ 下载 '+count(record.stats?.downloads)),text('span','★ Star '+count(record.stats?.stars)));return row;};
  const installedTab=button('已安装',()=>tab('installed'));installedTab.dataset.marketTab='installed';installedTab.setAttribute('role','tab');installedTab.setAttribute('aria-selected','false');document.querySelector('.market-page-tabs').children[0].after(installedTab);
  const installedView=document.createElement('section');installedView.id='market-installed';installedView.hidden=true;const installedToolbar=document.createElement('div');installedToolbar.className='market-toolbar';installedToolbar.append(button('检查作品更新',()=>library(true)),button('刷新本机版本',()=>library(false)));const installedList=document.createElement('div');installedList.id='installedLibrary';installedList.className='market-list';installedView.append(installedToolbar,installedList);$('marketView').append(installedView);
  function stopPreview(){if(frame!==null)cancelAnimationFrame(frame);frame=null;}
@@ -20,21 +22,24 @@ export function initMarketUI({snapshot,update,toast}){
  let libraryGeneration=0;
  async function library(checkUpdates){
   const generation=++libraryGeneration;status(checkUpdates?'正在检查同一作者仓库的已审核更新…':'正在读取本机版本…');
-  const result=await call({action:'library',checkUpdates});if(generation!==libraryGeneration)return;installedList.replaceChildren();
+  let timeout;
+  try{
+  const result=await Promise.race([call({action:'library',checkUpdates}),new Promise((_,reject)=>{timeout=setTimeout(()=>reject(new Error('读取超时，请点击「刷新本机版本」重试')),checkUpdates?20000:15000);})]);if(generation!==libraryGeneration)return;installedList.replaceChildren();
   for(const group of result.groups){
    const card=document.createElement('article');card.className='market-card';
    const art=document.createElement('div');art.className='market-cover';const image=document.createElement('img');image.alt=group.name+' 封面';image.src=group.cover;art.append(image);
-   const heading=document.createElement('div');heading.className='market-card-title';const version=text('span','v'+group.versions[0].version);version.className='market-version';heading.append(text('strong',group.name),version);
+   const heading=document.createElement('div');heading.className='market-card-title';const version=text('span',group.origin==='retained'?'升级保留':group.origin==='local'?'本地形象':'v'+group.versions[0].version);version.className='market-version';heading.append(text('strong',group.name),version);
    const description=text('p',group.description||'这位伙伴还没有介绍。');description.className='market-card-description';card.append(art,heading,description,text('p',group.author||'本地导入'));
    const select=document.createElement('select');select.setAttribute('aria-label',group.name+' 已安装版本');
-   for(const version of group.versions){const option=text('option','v'+version.version+' · '+(version.interactions.length===2?'含点击与摸头':'互动 '+version.interactions.length+'/2'));option.value=version.id;select.append(option);}if(group.versions.some(v=>v.id===result.activeAppearance))select.value=result.activeAppearance;
+   for(const version of group.versions){const option=text('option',(group.origin==='package'?'v'+version.version:version.name)+' · '+(version.interactions.length===2?'含点击与摸头':'互动 '+version.interactions.length+'/2'));option.value=version.id;select.append(option);}if(group.versions.some(v=>v.id===result.activeAppearance))select.value=result.activeAppearance;
    const usage=snapshot().pets.filter(p=>group.versions.some(v=>v.id===p.appearance));card.append(text('p',usage.length?'正在使用：'+usage.map(p=>p.name).join('、'):'已保存在形象库，可离线切换'),select);
    const actions=document.createElement('div');actions.className='dialog-actions';const apply=button('切换／回退到所选版本',async()=>{const petId=snapshot().activePetId;if(!petId)throw new Error('请先添加一只桌宠');const value=await call({action:'use-version',petId,appearanceId:select.value});update(value.snapshot);toast('已切换，其他桌宠保持原样');await library(false);});apply.disabled=!snapshot().activePetId;actions.append(apply);
    if(group.update){card.append(text('p','发现新版本 v'+group.update.version));const install=button('下载更新到形象库',async()=>{install.disabled=true;try{status('正在下载并校验更新，旧版本会保留…');await call({action:'install',versionId:group.update.versionId,mode:'library'});await library(false);status('新版已加入形象库；选择版本后可切换当前桌宠。');}finally{install.disabled=false;}},'primary');actions.append(install);}
    actions.append(button('卸载形象',async()=>{const value=await call({action:'uninstall',appearanceId:select.value});if(value.cancelled)return;update(value.snapshot);await library(false);toast('形象已卸载');},'danger'));card.append(actions);installedList.append(card);
   }
-  if(!result.groups.length)installedList.append(text('p','暂无导入或安装的社区作品。内置角色在工作台选择。'));
+  if(!result.groups.length)installedList.append(text('p','暂无已安装的扩展形象。默认内置 Claude 像素形象；其他形象可从市场安装或导入。'));
   status(result.error?'更新检查失败，可继续使用本机版本：'+result.error:checkUpdates?'检查完成。可下载发现的新版本；本机旧版本会保留。':'已安装版本可离线切换；回退只影响当前选中的桌宠。');
+  }catch(error){if(generation===libraryGeneration)status('读取已安装版本失败：'+error.message);}finally{clearTimeout(timeout);}
  }
  function resetDetail(){marketView.classList.remove('detail-open');previewGeneration++;selected=null;player=null;stopPreview();$('marketDetail').hidden=true;$('marketList').hidden=false;$('market-search-placeholder')?.remove();}
  async function covers(generation,cards){let position=0;async function worker(){while(position<cards.length&&generation===listGeneration){const {record,image,placeholder}=cards[position++];try{const source=await call({action:'image',versionId:record.id,cover:true});if(generation!==listGeneration)return;image.src=source;image.hidden=false;placeholder.hidden=true;}catch{if(generation===listGeneration)placeholder.textContent='暂无封面';}}}await Promise.all([worker(),worker(),worker()]);}
@@ -47,7 +52,7 @@ export function initMarketUI({snapshot,update,toast}){
     const title=text('strong',record.pet.name),version=text('span','v'+record.pet.version);version.className='market-version';const heading=document.createElement('div');heading.className='market-card-title';heading.append(title,version);
     const description=text('p',record.pet.description||'这位伙伴还没有介绍。');description.className='market-card-description';const author=text('p',record.pet.author+' · '+(record.preview?.variants||[]).map(v=>v==='original'?'原图':'像素').join(' / '));
     const actions=document.createElement('div');actions.className='dialog-actions';actions.append(button('查看作品',()=>showDetail(record.id)),button(record.installed?'加入角色库':'安装桌宠',()=>perform({action:'install',versionId:record.id}),'primary'));
-    card.append(art,heading,description,author);if(record.installed){const badge=text('small','已在本机形象库');badge.className='market-installed';card.append(badge);}card.append(actions);$('marketList').append(card);cards.push({record,image,placeholder});
+    card.append(art,heading,description,author,stats(record));if(record.installed){const badge=text('small','已在本机形象库');badge.className='market-installed';card.append(badge);}card.append(actions);$('marketList').append(card);cards.push({record,image,placeholder});
    }
    if(!listing.length){const empty=document.createElement('div');empty.className='market-empty';empty.append(text('h2','还没有找到匹配的伙伴'),text('p','试试其他关键词，或在「投稿作品」分享你的创作。'));$('marketList').append(empty);}
    status(listing.length?'找到 '+listing.length+' 个已上架作品。':'暂无匹配的已上架作品。');void covers(generation,cards);
@@ -63,7 +68,7 @@ export function initMarketUI({snapshot,update,toast}){
   const generation=++previewGeneration;stopPreview();status('正在读取作品信息…');
   try{const record=await call({action:'detail',versionId});if(generation!==previewGeneration)return;selected=record;marketView.classList.add('detail-open');player=record.preview?createVideoPlayer(null,record.preview,{loadImage:(state,variant)=>call({action:'image',versionId:record.id,state,variant})}):null;$('marketList').hidden=true;$('marketDetail').hidden=false;
    $('marketDetailName').textContent=record.pet.name;$('marketDetailAuthor').textContent=record.pet.author+' · v'+record.pet.version;$('marketDetailDescription').textContent=record.pet.description||'暂无介绍';$('marketDetailHash').textContent=record.sha256||'轻量投稿不下载分享包，不记录包哈希';for(const id of ['marketState','marketVariant','marketReplay'])$(id).hidden=!record.preview;
-   $('marketDetailMeta').replaceChildren();for(const [key,value]of [['授权',record.pet.license],['资源包',(record.size/1048576).toFixed(1)+' MiB'],['显示版本',(record.preview?.variants||[]).map(v=>v==='original'?'原图':'像素').join(' / ')]])$('marketDetailMeta').append(text('dt',key),text('dd',value));
+   $('marketDetailMeta').replaceChildren();for(const [key,value]of [['下载量',count(record.stats?.downloads)],['Star',count(record.stats?.stars)],['授权',record.pet.license],['资源包',(record.size/1048576).toFixed(1)+' MiB'],['显示版本',(record.preview?.variants||[]).map(v=>v==='original'?'原图':'像素').join(' / ')]])$('marketDetailMeta').append(text('dt',key),text('dd',value));
    const links=document.createElement('dd');links.append(button('GitHub 仓库',()=>call({action:'github',repository:record.repository,tag:record.tag,target:'repository'})),button('对应 Release',()=>call({action:'github',repository:record.repository,tag:record.tag,target:'release'})));$('marketDetailMeta').append(text('dt','作品来源'),links);
    $('marketState').replaceChildren();for(const state of ORDER){const option=text('option',labels[state]);option.value=state;$('marketState').append(option);}
    $('marketVariant').replaceChildren();for(const variant of record.preview?.variants||[]){const option=text('option',variant==='original'?'原图':'像素');option.value=variant;$('marketVariant').append(option);}
@@ -100,5 +105,3 @@ export function initMarketUI({snapshot,update,toast}){
  $('exportForm').onsubmit=async e=>{e.preventDefault();$('confirmExport').disabled=true;$('exportStatus').textContent='正在打包素材…';try{const details=Object.fromEntries(new FormData(e.target)),result=await call({action:'export',petId:exportPetId,details});if(result.cancelled){$('exportStatus').textContent='已取消保存';return;}$('exportStatus').textContent='已导出：'+result.path+'\n上传到 GitHub Release 后，在「投稿作品」提交附件信息。';const form=$('marketSubmitForm');if(!form.elements.assetName.value)form.elements.assetName.value=result.path.replaceAll('\\','/').split('/').at(-1);if(!form.elements.tag.value)form.elements.tag.value='v'+details.version;toast('分享包已导出');}catch(error){$('exportStatus').textContent=error.message;}finally{$('confirmExport').disabled=false;}};
  return {showPets,showMarket};
 }
-
-

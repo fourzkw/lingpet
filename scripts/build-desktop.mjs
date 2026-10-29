@@ -1,0 +1,39 @@
+import path from 'node:path';
+import {cp,mkdir,readFile,writeFile,access,readdir,stat} from 'node:fs/promises';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
+import {createRequire} from 'node:module';
+import {build} from 'esbuild';
+import {createHash} from 'node:crypto';
+import {createWriteStream} from 'node:fs';
+import {pipeline} from 'node:stream/promises';
+import {copyReleaseRuntime,copyHostDependencies} from './release-content.mjs';
+
+if(process.platform!=='win32')throw Error('当前独立安装构建仅支持 Windows');
+const run=promisify(execFile),root=process.cwd(),pkg=JSON.parse(await readFile('package.json','utf8')),out=path.resolve(process.argv[2]||`artifacts/lingpet-desktop-${pkg.version}-${Date.now()}`);
+await mkdir(out,{recursive:false});const payload=path.join(out,'payload'),app=path.join(payload,'resources/app');await mkdir(app,{recursive:true});
+const require=createRequire(import.meta.url),electron=path.dirname(require.resolve('electron/package.json'));await access(path.join(electron,'dist/electron.exe'));
+await cp(path.join(electron,'dist'),payload,{recursive:true});await cp(process.execPath,path.join(payload,'node.exe'));
+await copyReleaseRuntime(root,app);await copyHostDependencies(root,app);
+// Keep pnpm as a fallback: an existing DSH profile may use another pnpm major.
+const pnpm=path.dirname(require.resolve('pnpm'));
+await cp(pnpm,path.join(app,'tools/pnpm'),{recursive:true});
+await mkdir(path.join(payload,'package-manager'),{recursive:true});
+await writeFile(path.join(payload,'package-manager/pnpm.cmd'),'@echo off\r\n"%~dp0..\\node.exe" "%~dp0..\\resources\\app\\tools\\pnpm\\bin\\pnpm.cjs" %*\r\n');
+const application=JSON.parse(await readFile(path.join(app,'package.json'),'utf8'));application.main='desktop/main.js';application.lingpetDesktop=true;await writeFile(path.join(app,'package.json'),JSON.stringify(application,null,2));
+await writeFile(path.join(app,'desktop-distribution.json'),JSON.stringify({format:1,version:pkg.version}));
+const adapter=path.join(app,'adapters/dsh');await mkdir(adapter,{recursive:true});
+await build({entryPoints:['adapters/dsh/entry.js'],outfile:path.join(adapter,'index.js'),bundle:true,platform:'node',format:'esm',target:'node22'});
+await writeFile(path.join(adapter,'package.json'),JSON.stringify({name:'lingpet-agent',version:pkg.version,type:'module',main:'index.js',files:['index.js','connection.json','cordis.patch.yml'],dsh:{bundle:{patch:'./cordis.patch.yml'}},dependencies:{}}));
+await writeFile(path.join(adapter,'cordis.patch.yml'),'- insert:\n    - id: board-ai-pet\n      name: lingpet-agent\n');
+const compiler=process.env.LINGPET_CSC||'C:/Windows/Microsoft.NET/Framework64/v4.0.30319/csc.exe';await access(compiler);
+const common=['/nologo','/optimize+','/reference:System.Web.Extensions.dll','/reference:System.Windows.Forms.dll'];
+for(const name of ['LingPet','LingPetBridge','LingPetMaintenance'])await run(compiler,[...common,'/target:'+(name==='LingPetBridge'?'exe':'winexe'),'/win32icon:'+path.join(root,'assets/brand/app.ico'),'/out:'+path.join(payload,name+'.exe'),path.join(root,'launcher/Launcher.cs')],{windowsHide:true});
+const manifest=[];async function walk(folder){for(const entry of await readdir(folder,{withFileTypes:true})){const file=path.join(folder,entry.name);if(entry.isDirectory())await walk(file);else manifest.push({file:path.relative(payload,file).replaceAll('\\','/'),sha256:createHash('sha256').update(await readFile(file)).digest('hex')});}}await walk(payload);
+await writeFile(path.join(payload,'desktop-manifest.json'),JSON.stringify({format:1,version:pkg.version,files:manifest},null,2));
+if(process.argv.includes('--unpacked')){console.log(JSON.stringify({payload,version:pkg.version}));process.exit(0);}
+const {default:yazl}=await import('yazl');const zip=new yazl.ZipFile();const zipPath=path.join(out,'payload.zip');
+async function zipFolder(folder){for(const entry of await readdir(folder,{withFileTypes:true})){const file=path.join(folder,entry.name);if(entry.isDirectory())await zipFolder(file);else zip.addFile(file,path.relative(payload,file).replaceAll('\\','/'));}}await zipFolder(payload);const finished=pipeline(zip.outputStream,createWriteStream(zipPath));zip.end();await finished;
+const setup=path.join(out,'LingPet-Setup-'+pkg.version+'.exe');await run(compiler,['/nologo','/optimize+','/target:winexe','/reference:System.Windows.Forms.dll','/reference:System.Drawing.dll','/reference:System.Web.Extensions.dll','/reference:System.IO.Compression.dll','/resource:'+zipPath+',payload.zip','/win32icon:'+path.join(root,'assets/brand/app.ico'),'/out:'+setup,path.join(root,'launcher/Setup.cs')],{windowsHide:true});
+await writeFile(path.join(out,'release.json'),JSON.stringify({format:1,version:pkg.version,setup:path.basename(setup),sha256:createHash('sha256').update(await readFile(setup)).digest('hex'),bytes:(await stat(setup)).size,codeSigned:false},null,2));
+console.log(JSON.stringify({setup,payload,version:pkg.version}));

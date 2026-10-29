@@ -18,6 +18,12 @@ import {INTERACTION_KINDS} from '../animation-kinds.js';
 const {PNG}=pngjs;
 export const LIMITS={package:200*1024*1024,expanded:512*1024*1024,file:64*1024*1024,entries:163,pixels:16*1024*1024};
 export const sha256=bytes=>createHash('sha256').update(bytes).digest('hex');
+// Round frame boundaries, so fractional milliseconds do not accumulate timing drift.
+export function integerDurations(values){
+ if(!Array.isArray(values)||values.some(d=>!Number.isFinite(d)||d<1||d>10000))throw new Error('无效的导出帧时长');
+ let elapsed=0,previous=0;
+ return values.map(duration=>{elapsed+=duration;const end=Math.round(elapsed),value=end-previous;previous=end;return value;});
+}
 const idPattern=/^[a-z0-9][a-z0-9-]{2,63}$/;
 export function metadata(value){
  if(!value||value.formatVersion!==1||!idPattern.test(value.id)||typeof value.version!=='string'||value.version.length>32||!/^\d+\.\d+\.\d+$/.test(value.version))throw new Error('无效的资源包 ID 或版本');
@@ -72,7 +78,7 @@ export async function exportPetpack({dataDir,pet,details}){
  const files=new Map([['pet.json',Buffer.from(JSON.stringify(meta,null,2))]]);let cover;
  for(const state of Object.keys(source.clips)){const candidates=[];
   for(const [index,clip] of clipCandidates(source.clips[state]).entries()){
-   const target=`sprites/${state}${index?'-'+index:''}.png`,copy={...clip,file:target};delete copy.alternatives;delete copy.selection;delete copy.name;candidates.push(copy);
+   const target=`sprites/${state}${index?'-'+index:''}.png`,copy={...clip,file:target,durations:integerDurations(clip.durations)};delete copy.alternatives;delete copy.selection;delete copy.name;candidates.push(copy);
    for(const v of manifest.variants){const resourceRoot=interactionRoot&&INTERACTION_KINDS.includes(state)?interactionRoot:root,base=await realpath(resourceRoot),file=await realpath(path.resolve(resourceRoot,v==='original'?source.original.directory:'',clip.file)),rel=path.relative(base,file);if(rel.startsWith('..')||path.isAbsolute(rel))throw new Error('资源路径越界');const bytes=await readFile(file);files.set((v==='original'?'original/':'')+target,bytes);
     if(state==='idle'&&index===0&&(!cover||v==='original')){const png=readPNG(bytes),tile=v==='original'?source.original.tileSize:source.tileSize,frame=clip.frames[0],image=new PNG({width:tile,height:tile});PNG.bitblt(png,image,frame%source.columns*tile,Math.floor(frame/source.columns)*tile,tile,tile,0,0);cover=PNG.sync.write(image,{colorType:6});}
    }

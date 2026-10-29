@@ -14,9 +14,38 @@ import {PetRegistry} from '../src/pet-registry.js';
 const {PNG}=pngjs;
 export async function fixturePetpack(extra={},metadata={}){const png=new PNG({width:32,height:16});for(let y=2;y<14;y++)for(let x=2;x<30;x++){const i=(y*32+x)*4;png.data[i]=180;png.data[i+1]=100;png.data[i+2]=230;png.data[i+3]=255;}const image=PNG.sync.write(png,{colorType:6}),manifest={schemaVersion:1,character:'fixture',columns:2,tileSize:16,variants:['pixel'],clips:{}};const files={'cover.png':image};for(const state of ['idle','thinking','working','input','approval','done','error','sleep']){manifest.clips[state]={file:'sprites/'+state+'.png',sourceFrames:2,frames:[0,1],durations:[80,90],loop:!['done','error'].includes(state)};files['sprites/'+state+'.png']=image;}files['manifest.json']=Buffer.from(JSON.stringify(manifest));files['pet.json']=Buffer.from(JSON.stringify({formatVersion:1,id:'fixture-pet',name:'社区桌宠',author:'alice',license:'CC0',description:'测试作品',version:'1.0.0',minAppVersion:'0.4.0',...metadata}));Object.assign(files,extra);const zip=new yazl.ZipFile(),chunks=[];const finished=new Promise((resolve,reject)=>{zip.outputStream.on('data',b=>chunks.push(b));zip.outputStream.on('error',reject);zip.outputStream.on('end',()=>resolve(Buffer.concat(chunks)));});for(const [file,bytes]of Object.entries(files))zip.addBuffer(bytes,file);zip.end();return finished;}
 async function data(t){const root=await mkdtemp(path.join(process.cwd(),'.test-data-market-'));t.after(async()=>{setCustomAppearances([]);assert.equal(path.dirname(root),process.cwd());assert.ok(path.basename(root).startsWith('.test-data-market-'));await rm(root,{recursive:true,force:true});});return root;}
+
+test('installed library includes local appearances without packages as separate works under the same role',async t=>{
+ const dir=await data(t),installed=await installPetpack(dir,await fixturePetpack()),entry={...installed.appearance,package:undefined,packageVersions:undefined};
+ const service=new MarketService(dir,{fetcher:async()=>{throw Error('offline');}});
+ const library=await service.library({appearances:[{...entry,id:'local-first',name:'形象一'},{...entry,id:'local-second',name:'形象二'}]});
+ assert.equal(library.groups.length,2);assert.deepEqual(library.groups.map(g=>g.name),['形象一','形象二']);assert.ok(library.groups.every(g=>g.origin==='local'&&!g.update));
+ const store=new CreationStore(dir);await store.write('appearances',entry);assert.equal((await service.library()).groups[0].origin,'local');
+ await service.uninstall(entry.id);assert.equal((await service.library()).groups.length,0);
+});
 test('sharing packages preserve complete actions and install as independent community roles',async t=>{const dir=await data(t),bytes=await fixturePetpack(),p=await readPetpack(bytes);assert.equal(p.pet.id,'fixture-pet');assert.equal(p.files.size,11);const original=new PetRegistry({}),old=structuredClone(original.pets[0]);const installed=await installPetpack(dir,bytes,{expectedSHA256:sha256(bytes)});assert.match(installed.appearance.character,/^community-[a-f0-9]{24}$/);const entries=await loadCustomAppearances(dir);setCustomAppearances(entries);const pet=original.create({character:installed.appearance.character,appearance:installed.appearance.id});assert.equal(appearanceInfo(pet).custom,true);assert.deepEqual(original.pets[0],old);assert.equal((await installPetpack(dir,bytes)).existing,true);const restored=new PetRegistry(original.config);assert.equal(restored.pets[1].character,installed.appearance.character);});
 test('archive whitelist and optional expected hashes reject executable or mismatched packages',async t=>{const dir=await data(t);for(const name of ['manifest.js','index.html','scripts/start.js'])await assert.rejects(readPetpack(await fixturePetpack({[name]:Buffer.from('bad')})),/非法/);const good=await fixturePetpack();await assert.rejects(installPetpack(dir,good,{expectedSHA256:'0'.repeat(64)}),/哈希/);await assert.rejects(installPetpack(dir,good,{expectedIdentity:{id:'different',version:'1.0.0'}}),/版本/);await assert.rejects(readPetpack(await fixturePetpack({}, {minAppVersion:'99.0.0'})),/兼容版本/);assert.equal((await loadCustomAppearances(dir)).length,0);});
 test('Claude built-in resources export into portable data-only packages',async t=>{const dir=await data(t),result=await exportPetpack({dataDir:dir,pet:{character:'claude',appearance:'classic'},details:{id:'my-claude',author:'alice',license:'Personal test',version:'1.0.0'}});const p=await readPetpack(result.bytes);assert.equal(p.pet.name,'Claude');assert.equal(p.manifest.clips.idle.frames[0],24);assert.equal(p.manifest.clips.sleep.sourceFrames,64);assert.equal(p.files.has('manifest.js'),false);});
+
+test('cloud dragon fractional timing exports, installs and reexports with all variants and interactions',async t=>{
+ const dir=await data(t),sourceFile=new URL('../assets/chatgpt-dragon/actions-v1/manifest.json',import.meta.url),original=await readFile(sourceFile,'utf8'),source=JSON.parse(original);
+ const details={id:'cloud-dragon-timing',author:'QA',license:'Personal test',version:'1.0.0'};
+ const exported=await exportPetpack({dataDir:dir,pet:{character:'chatgpt',appearance:'cloud-dragon'},details}),pack=await readPetpack(exported.bytes);
+ assert.deepEqual(pack.manifest.variants,['pixel','original']);assert.equal(Object.keys(pack.manifest.clips).length,10);
+ for(const [state,clip] of Object.entries(source.clips)){
+  const result=pack.manifest.clips[state];assert.deepEqual(result.frames,clip.frames);assert.equal(result.loop,clip.loop);assert.equal(result.loopFrom,clip.loopFrom);
+  let sourceTime=0,exportTime=0;for(let i=0;i<clip.durations.length;i++){sourceTime+=clip.durations[i];exportTime+=result.durations[i];assert.ok(Number.isInteger(result.durations[i]));assert.ok(Math.abs(sourceTime-exportTime)<=0.500000001);}
+ }
+ for(const variant of ['','original/'])assert.deepEqual(pack.files.get(variant+'sprites/idle.png'),await readFile(new URL('../assets/chatgpt-dragon/actions-v1/'+variant+'idle.png',import.meta.url)));
+ const installed=await installPetpack(dir,exported.bytes);setCustomAppearances(await loadCustomAppearances(dir));
+ const again=await exportPetpack({dataDir:dir,pet:{character:installed.appearance.character,appearance:installed.appearance.id},details:{...details,id:'cloud-dragon-roundtrip'}}),restored=await readPetpack(again.bytes);
+ assert.deepEqual(restored.manifest.clips,pack.manifest.clips);assert.equal(await readFile(sourceFile,'utf8'),original);
+});
+
+test('incoming petpacks still reject fractional frame durations',async()=>{
+ const base=await readPetpack(await fixturePetpack()),manifest=structuredClone(base.manifest);manifest.clips.idle.durations[0]=80.5;
+ await assert.rejects(readPetpack(await fixturePetpack({'manifest.json':Buffer.from(JSON.stringify(manifest))})),/无效动作 idle/);
+});
 
 test('portable click and head-pat clips round-trip without replacing eight session actions',async t=>{
  const dir=await data(t),base=await readPetpack(await fixturePetpack()),manifest=structuredClone(base.manifest);
@@ -35,6 +64,18 @@ test('library keeps versions offline and only offers updates from the installed 
  const checked=await service.library({checkUpdates:true});assert.deepEqual(checked.groups[0].versions.map(v=>v.version),['1.1.0','1.0.0']);assert.equal(checked.groups[0].update.version,'1.2.0');
  offline=true;const failed=await service.library({checkUpdates:true});assert.equal(failed.groups[0].versions.length,2);assert.match(failed.error,/offline/);
  assert.equal((await service.library()).groups[0].versions.length,2);
+});
+test('desktop library reuses validated entries and covers, then reflects a reloaded catalog',async t=>{
+ const dir=await data(t);await installPetpack(dir,await fixturePetpack());
+ const appearances=await loadCustomAppearances(dir),service=new MarketService(dir,{fetcher:async()=>{throw Error('local library must not access network');}});
+ service.installed=async()=>{throw Error('validated desktop entries must not be rescanned');};
+ const first=await service.library({appearances});assert.equal(first.groups.length,1);
+ const coverFile=path.join(appearances[0].root,'cover.png'),original=await readFile(coverFile);
+ // Cached covers survive a transient unavailable file; new catalog entries read again.
+ await rm(coverFile);assert.deepEqual(await service.library({appearances}),first);
+ const reloaded=await loadCustomAppearances(dir),fresh=await service.library({appearances:reloaded});
+ assert.notEqual(fresh.groups[0].cover,'data:image/png;base64,'+original.toString('base64'));
+ assert.deepEqual((await service.library({appearances:[]})).groups,[]);
 });
 test('market accepts changed GitHub packages while enforcing identity, archive safety and redirect restrictions',async t=>{const dir=await data(t),bytes=await fixturePetpack(),id='a'.repeat(48),record={pet:{id:'fixture-pet',version:'1.0.0'},sha256:sha256(bytes),size:bytes.length,url:'https://github.com/alice/pet/releases/download/v1/test.petpack',source:{assetId:42}};let changed=false,evil=false;const service=new MarketService(dir,{fetcher:async url=>{if(String(url).includes('/install'))return new Response(JSON.stringify({...record,sha256:changed?undefined:record.sha256,size:changed?bytes.length+100:record.size}));if(evil)return new Response(null,{status:302,headers:{location:'http://127.0.0.1/private'}});return new Response(bytes);}});await service.configure('http://127.0.0.1:9633');changed=true;const installed=await service.install(id);assert.equal(installed.installed,true);assert.equal(installed.appearance.sha256,sha256(bytes));changed=false;evil=true;await assert.rejects(service.install(id),/GitHub/);evil=false;assert.equal((await service.install(id)).installed,true);assert.equal((await service.configure('http://example.com')).url,'http://example.com');await assert.rejects(service.configure('ftp://example.com'),/HTTPS/);});
 

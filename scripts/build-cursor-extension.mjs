@@ -3,11 +3,12 @@ import path from 'node:path';
 import {PACKAGE_ROOT} from '../src/paths.js';
 
 const out=path.resolve(process.argv[2]||path.join(PACKAGE_ROOT,'artifacts/cursor-sidebar-'+Date.now()));
-const plugin=path.resolve(process.argv[3]||path.join(PACKAGE_ROOT,'artifacts/cursor-board-pet-0.3.0-win-x64'));
+const version=JSON.parse(await readFile(path.join(PACKAGE_ROOT,'package.json'),'utf8')).version;
+const plugin=path.resolve(process.argv[3]||path.join(PACKAGE_ROOT,`artifacts/cursor-board-pet-${version}-win-x64`));
 await mkdir(out,{recursive:false});
 await cp(path.join(PACKAGE_ROOT,'cursor-extension'),path.join(out,'extension'),{recursive:true});
 await cp(plugin,path.join(out,'extension/cursor-plugin'),{recursive:true});
-const pkg=JSON.parse(await readFile(path.join(out,'extension/package.json'),'utf8'));
+const pkg=JSON.parse(await readFile(path.join(out,'extension/package.json'),'utf8'));pkg.version=version;await writeFile(path.join(out,'extension/package.json'),JSON.stringify(pkg,null,2)+'\n');
 await writeFile(path.join(out,'extension.vsixmanifest'),`<?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
 <Metadata><Identity Language="en-US" Id="${pkg.name}" Version="${pkg.version}" Publisher="${pkg.publisher}"/><DisplayName>${pkg.displayName}</DisplayName><Description xml:space="preserve">${pkg.description}</Description><Tags>cursor,desktop,pet</Tags><Categories>Other</Categories><Properties><Property Id="Microsoft.VisualStudio.Code.Engine" Value="${pkg.engines.vscode}"/><Property Id="Microsoft.VisualStudio.Code.ExtensionKind" Value="ui"/></Properties></Metadata>

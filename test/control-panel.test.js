@@ -1,10 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,rm,readFile,unlink} from 'node:fs/promises';
+import {mkdtemp,rm,readFile,unlink,writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {startControlPanel} from '../src/control-panel.js';
 import {startLocalServer} from '../src/local-server.js';
 import {StateStore} from '../src/state-store.js';
+import {createPetControl} from '../src/sidebar-control.js';
+
+test('browser and MCP panels can poll Electron download progress while their start command is pending',async()=>{
+ const dir=await mkdtemp(path.resolve('.test-data-control-progress-'));
+ let release,entered;const ready=new Promise(r=>entered=r),gate=new Promise(r=>release=r);
+ const start=async()=>{entered();await gate;throw Error('fixture download failure');};
+ const panel=await startControlPanel(dir,{start}),control=createPetControl(dir,{start});
+ let pending;
+ try{
+   await writeFile(path.join(dir,'runtime-status.json'),JSON.stringify({phase:'downloading',percent:42,message:'正在下载 Electron：42%'}));
+   const origin=new URL(panel.url).origin,bootstrap=await fetch(panel.url,{redirect:'manual'}),cookie=bootstrap.headers.get('set-cookie').split(';')[0];
+   pending=fetch(origin+'/start',{method:'POST',headers:{cookie,origin,'X-Board-Pet-Control':'1'}});
+   await ready;
+   const status=await (await fetch(origin+'/status',{headers:{cookie}})).json();assert.equal(status.runtime.percent,42);assert.equal(status.running,false);
+   const mcpStart=assert.rejects(control.run('start'),/fixture download failure/);
+   assert.equal((await control.run('status')).runtime.percent,42);
+   release();assert.equal((await pending).status,500);await mcpStart;
+ }finally{release();await pending?.catch(()=>{});await panel.close();await rm(dir,{recursive:true,force:true});}
+});
 
 test('control panel authenticates browser actions, survives pet stop, and explicitly restarts',async()=>{
   const dir=await mkdtemp(path.join(process.cwd(),'.test-data-control-'));let runtime,panel;const options=[];

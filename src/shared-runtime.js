@@ -6,6 +6,7 @@ import {describeRelease} from './release.js';
 import {PACKAGE_ROOT} from './paths.js';
 import {withInstallLock} from './install-lock.js';
 import {publishDirectory} from './atomic-directory.js';
+import {readEndpoint,request} from './bridge-client.js';
 
 // Electron's patched fs treats *.asar as directories. Installer copies must use
 // the raw filesystem, otherwise copying Electron's own distribution can stall.
@@ -26,6 +27,29 @@ function managedPath(base,name){
 }
 async function readManifest(base){try{return JSON.parse(await readFile(path.join(base,'active.json'),'utf8'));}catch(error){if(error.code==='ENOENT')return null;throw error;}}
 async function commit(base,value){const temp=path.join(base,'active-'+randomUUID()+'.tmp');await writeFile(temp,JSON.stringify(value,null,2));await rename(temp,path.join(base,'active.json'));}
+async function liveRelease(dir){
+  const endpoint=await readEndpoint(dir);if(!endpoint)return null;
+  try{
+    const health=await request(endpoint,'/health',undefined,1500),root=health.release?.root;
+    if(typeof root!=='string')return null;
+    const release=await describeRelease(root),base=path.resolve(dir,'shared/releases');
+    if(path.dirname(release.root)!==base||release.backendHash!==health.release.backendHash||release.frontendHash!==health.release.frontendHash||release.version!==health.release.version)return null;
+    return release;
+  }catch{return null;}
+}
+async function reconcileLive(dir,manifest){
+  const running=await liveRelease(dir);if(!running)return {manifest,running:null};
+  const base=path.join(dir,'shared'),name=path.basename(running.root);
+  // A healthy older process must not undo a newer installation still starting.
+  if(manifest&&compareVersions(manifest.version,running.version)>0)return {manifest,running};
+  if(manifest?.active===name&&!manifest.blocked?.includes(name))return {manifest,running};
+  const next={protocol:SHARED_PROTOCOL,active:name,previous:manifest?.active!==name?manifest?.active??null:manifest?.previous??null,blocked:(manifest?.blocked??[]).filter(n=>n!==name),version:running.version,backendHash:running.backendHash,frontendHash:running.frontendHash};
+  await commit(base,next);return {manifest:next,running};
+}
+export async function confirmRunningSharedRuntime(dir){
+  const base=path.join(dir,'shared');
+  return withInstallLock(path.join(base,'install.lock'),async()=>{const {running}=await reconcileLive(dir,await readManifest(base));return running;});
+}
 export async function activeSharedRelease(dir){
   const base=path.join(dir,'shared'),manifest=await readManifest(base);if(!manifest)return null;
   if(manifest.protocol!==SHARED_PROTOCOL)throw new Error('共享桌宠协议不兼容，请升级接入插件');
@@ -65,7 +89,7 @@ export async function prepareSharedRuntime(dir,{root=PACKAGE_ROOT,copyDependenci
   if((pkg.boardPetProtocol??1)!==SHARED_PROTOCOL)throw new Error('安装包协议不兼容');
   const base=path.join(dir,'shared');
   return withInstallLock(path.join(base,'install.lock'),async()=>{
-    const manifest=await readManifest(base);let current=null;
+    const {manifest}=await reconcileLive(dir,await readManifest(base));let current=null;
     if(manifest){try{current=await activeSharedRelease(dir);}catch{/* Repair from a valid candidate; preserve previous files. */}}
     if(current){
       const order=compareVersions(candidate.version,current.version);
@@ -101,6 +125,8 @@ export async function rollbackSharedRuntime(dir,failedRoot){
   const base=path.join(dir,'shared');
   return withInstallLock(path.join(base,'install.lock'),async()=>{
     const manifest=await readManifest(base);if(!manifest?.previous||managedPath(base,manifest.active)!==path.resolve(failedRoot))return null;
+    const running=await liveRelease(dir);
+    if(running&&compareVersions(running.version,manifest.version)>=0){await reconcileLive(dir,manifest);return null;}
     const root=managedPath(base,manifest.previous),previous=await describeRelease(root);
     await commit(base,{protocol:SHARED_PROTOCOL,active:manifest.previous,previous:null,blocked:[...new Set([...(manifest.blocked??[]),manifest.active])],version:previous.version,backendHash:previous.backendHash,frontendHash:previous.frontendHash});return previous;
   });

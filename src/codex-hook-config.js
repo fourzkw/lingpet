@@ -36,6 +36,31 @@ export function disableCodexPluginHooks(text){
   return lines.join('\n');
 }
 
+export function removeCodexUserHooks(existing,script){
+  if(!existing||typeof existing!=='object'||Array.isArray(existing)||existing.hooks&&(typeof existing.hooks!=='object'||Array.isArray(existing.hooks)))throw Error('Codex Hooks 配置无效');
+  script=script.replaceAll('\\','/');const hooks={...existing.hooks};let removed=0;
+  for(const event of CODEX_HOOKS){
+    if(!Array.isArray(hooks[event]))continue;
+    hooks[event]=hooks[event].map(group=>{
+      if(!Array.isArray(group.hooks))return group;
+      const next=group.hooks.filter(handler=>{const commands=[handler.command,handler.commandWindows].filter(c=>typeof c==='string'),owned=commands.length&&commands.every(c=>c.replaceAll('\\','/')===`node "${script}" ${event}`);if(owned)removed++;return !owned;});
+      return next.length===group.hooks.length?group:{...group,hooks:next};
+    }).filter(g=>!Array.isArray(g.hooks)||g.hooks.length);
+    if(!hooks[event].length)delete hooks[event];
+  }
+  return {value:removed?{...existing,hooks}:existing,removed};
+}
+
+// Remove our migration overrides; retain all trust hashes and third-party state.
+export function removeCodexPluginOverrides(text){
+  const ids=new Set(['session_start','session_end','user_prompt_submit','pre_tool_use','permission_request','post_tool_use','stop','interrupt'].map(n=>`board-pet@board-pet-local:hooks/hooks.json:${n}:0:0`));
+  let owned=false,removed=false;
+  const lines=text.split(/\r?\n/).filter(line=>{
+    if(/^\s*\[/.test(line)){const match=line.match(/^\s*\[hooks\.state\."([^"]+)"\]\s*(?:#.*)?$/);owned=!!match&&ids.has(match[1]);}
+    const drop=owned&&/^\s*enabled\s*=\s*false\s*(?:#.*)?$/.test(line);if(drop)removed=true;return !drop;
+  });return removed?lines.join('\n'):text;
+}
+
 // Only the tiny launcher lives in the user hook directory. Assets and Electron
 // remain in the existing immutable shared release, outside the plugin cache.
 export const CODEX_USER_LAUNCHER=`const fs=require('node:fs');

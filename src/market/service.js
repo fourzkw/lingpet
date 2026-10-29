@@ -13,7 +13,7 @@ function marketURL(raw){const u=new URL(raw);if(u.username||u.password||u.search
 export function githubDownloadURL(raw){const u=new URL(raw);if(u.protocol!=='https:'||u.username||u.password||u.port||!['github.com','release-assets.githubusercontent.com','objects.githubusercontent.com','github-releases.githubusercontent.com'].includes(u.hostname))throw new Error('只允许 GitHub Release 下载地址');return u;}
 async function bounded(res,max){if(Number(res.headers.get('content-length'))>max)throw new Error('响应体积超限');const chunks=[];let n=0;for await(const chunk of res.body){n+=chunk.length;if(n>max){await res.body.cancel?.().catch(()=>{});throw new Error('响应体积超限');}chunks.push(chunk);}return Buffer.concat(chunks);}
 export class MarketService{
- constructor(dir,{fetcher=fetch}={}){this.dir=dir;this.fetcher=fetcher;this.imageCache=new Map();this.imageBytes=0;}
+ constructor(dir,{fetcher=fetch}={}){this.dir=dir;this.fetcher=fetcher;this.imageCache=new Map();this.imageBytes=0;this.installedCovers=new WeakMap();}
  async config(){try{return {url:marketURL(JSON.parse(await readFile(path.join(this.dir,'market.json'),'utf8')).url)};}catch(error){if(error.code==='ENOENT')return {url:DEFAULT_MARKET};throw error;}}
  async configure(url){const result={url:marketURL(url)};await save(path.join(this.dir,'market.json'),result);return result;}
  async api(route,body,origin){const url=origin??(await this.config()).url,res=await this.fetcher(url+route,{redirect:'error',signal:AbortSignal.timeout(15000),...(body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})});const value=JSON.parse((await bounded(res,8*1024*1024)).toString('utf8'));if(!res.ok)throw new Error(value.error||'市场请求失败');return value;}
@@ -49,8 +49,13 @@ export class MarketService{
   // Submission hashes and sizes describe the saved preview snapshot, not the author's current GitHub asset.
   if(res.status!==200)throw new Error('GitHub 下载失败或重定向过多');const bytes=await bounded(res,LIMITS.package);const installed=await installPetpack(this.dir,bytes,{expectedIdentity:record.pet,source:{market:marketOrigin,versionId,github:record.source}});return installed;
  }
- async installed(){return (await loadCustomAppearances(this.dir)).filter(e=>e.package);}
+ async installed(){return (await loadCustomAppearances(this.dir)).map(installedEntry);}
  async installedCover(entry){
+  let pending=this.installedCovers.get(entry);
+  if(!pending){pending=this.readInstalledCover(entry).catch(error=>{this.installedCovers.delete(entry);throw error;});this.installedCovers.set(entry,pending);}
+  return pending;
+ }
+ async readInstalledCover(entry){
   try{return 'data:image/png;base64,'+(await readFile(path.join(entry.root,'cover.png'))).toString('base64');}catch(error){if(error.code!=='ENOENT')throw error;}
   const clip=entry.manifest.clips.idle,tile=entry.manifest.tileSize,frame=clip.frames[0],source=pngjs.PNG.sync.read(await readFile(path.join(entry.root,clip.file))),cover=new pngjs.PNG({width:tile,height:tile});
   pngjs.PNG.bitblt(source,cover,frame%entry.manifest.columns*tile,Math.floor(frame/entry.manifest.columns)*tile,tile,tile,0,0);return 'data:image/png;base64,'+pngjs.PNG.sync.write(cover,{colorType:6}).toString('base64');
@@ -64,9 +69,10 @@ export class MarketService{
    await rm(store.file('appearances',id),{force:true});await rm(root,{recursive:true,force:true});
   }return {removed:true};});
  }
- async library({checkUpdates=false}={}){
-  const entries=await this.installed(),groups=new Map();
-  for(const entry of entries){const sources=entry.marketSources||[entry.source].filter(Boolean),repo=sources.find(s=>s.github?.repoId)?.github.repoId,key=repo?repo+'/'+entry.package.id:entry.character;let group=groups.get(key);if(!group){group={key,packageId:entry.package.id,name:entry.package.name,description:entry.package.description,author:entry.package.author,cover:await this.installedCover(entry),versions:[],sources:[]};groups.set(key,group);}for(const pkg of entry.packageVersions||[entry.package])group.versions.push({id:entry.id,character:entry.character,name:entry.name,version:pkg.version,variants:entry.variants,interactions:['click','pet'].filter(k=>entry.manifest.clips[k])});group.sources.push(...sources);}
+ async library({checkUpdates=false,appearances}={}){
+  // The desktop already validates and reloads these entries after resource changes.
+  const entries=appearances===undefined?await this.installed():appearances.map(installedEntry),groups=new Map();
+  for(const entry of entries){const sources=entry.marketSources||[entry.source].filter(Boolean),repo=sources.find(s=>s.github?.repoId)?.github.repoId,key=repo?repo+'/'+entry.package.id:entry.localEntry?'local/'+entry.id:entry.character;let group=groups.get(key);if(!group){group={key,packageId:entry.package.id,name:entry.package.name,description:entry.package.description,author:entry.package.author,origin:entry.retainedBuiltin?'retained':entry.localEntry?'local':'package',cover:await this.installedCover(entry),versions:[],sources:[]};groups.set(key,group);}for(const pkg of entry.packageVersions||[entry.package])group.versions.push({id:entry.id,character:entry.character,name:entry.name,version:pkg.version,variants:entry.variants,interactions:['click','pet'].filter(k=>entry.manifest.clips[k])});group.sources.push(...sources);}
   let records=[],error;
   if(checkUpdates)try{const {url}=await this.config();records=await this.api('/api/pets');if(!Array.isArray(records))throw new Error('无效市场响应');for(const group of groups.values())group.sources=group.sources.filter(s=>s.market===url);}catch(e){error=e.message;}
   for(const group of groups.values()){
@@ -80,4 +86,7 @@ export class MarketService{
  export(pet,details){return exportPetpack({dataDir:this.dir,pet,details});}
 }
 
-
+function installedEntry(entry){
+ if(entry.package)return entry;
+ return {...entry,localEntry:true,package:{id:'local-'+entry.id,name:entry.name,version:'0.0.0',author:entry.retainedBuiltin?'LingPet':'本地创作',description:entry.retainedBuiltin?'从旧版保留的独立形象，已安装在用户形象库。':'本地创建或导入的形象。'}};
+}

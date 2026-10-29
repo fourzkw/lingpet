@@ -15,3 +15,5 @@
 /* Ensure legacy card rules do not constrain the new artwork and actions. */
 .public-site .pet-cover img{border:0;padding:0;margin:0}.public-site .pet-card-footer button{width:auto;margin:0;flex:none}.public-site .pet-cover{margin:0}.public-site .record{border-radius:14px}.public-site .pet-card-info{flex:1;display:flex;flex-direction:column}.public-site .pet-card-footer{margin-top:auto}.public-site .pet-card-description{overflow-wrap:anywhere}.public-site .pet-card h2{overflow-wrap:anywhere}
 .public-site .pet-cover canvas{position:absolute;inset:12px;width:calc(100% - 24px);height:calc(100% - 24px);object-fit:contain;background:var(--surface-soft);border-radius:8px;pointer-events:none}.public-site .pet-cover .pet-badge{z-index:2}
+
+.public-site .pet-stats{display:flex;flex-wrap:wrap;gap:8px 18px;color:var(--muted);font-variant-numeric:tabular-nums}

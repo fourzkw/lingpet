@@ -1,9 +1,9 @@
-import {setCustomAppearances} from '../src/characters.js';
+import {setCustomAppearances,configureBundledAssets} from '../src/characters.js';
 import {createVideoPlayer} from './video-player.js';
 import {syncInteractionAssets} from './interaction-actions.js';
 const players=new Map(),versions=new Map();let revision='';
-export function syncCustomAppearances(entries=[],roles=[]){
-  const key=JSON.stringify([entries.map(e=>[e.id,e.taskId,e.manifest]),roles]);if(key===revision)return false;revision=key;setCustomAppearances(entries,roles);
+export function syncCustomAppearances(entries=[],roles=[],bundledAssets){
+  const key=JSON.stringify([entries.map(e=>[e.id,e.taskId,e.manifest]),roles,bundledAssets]);if(key===revision)return false;revision=key;if(bundledAssets)configureBundledAssets(bundledAssets);setCustomAppearances(entries,roles);
   syncInteractionAssets(entries);
   const assets=new Set(entries.map(e=>e.asset));for(const asset of players.keys())if(!assets.has(asset)){players.delete(asset);versions.delete(asset);}
   for(const entry of entries){const version=JSON.stringify([entry.taskId,entry.manifest]);if(versions.get(entry.asset)===version)continue;

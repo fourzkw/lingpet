@@ -1,4 +1,6 @@
 import { readEndpoint as defaultReadEndpoint, request as defaultRequest } from './bridge-client.js';
+import {connectionStatus} from './connection-status.js';
+import {readRuntimeProgress} from './runtime-progress.js';
 
 const isUnreachable = error =>
   error?.cause?.code === 'ECONNREFUSED' ||
@@ -8,16 +10,18 @@ const isUnreachable = error =>
 // The host plugin owns this side of the channel: the desktop pet still rejects
 // browser origins and requires its 64-hex token, so these calls stay Node-to-Node.
 export function createPetControl({ dir, ensure, readEndpoint = defaultReadEndpoint, send = defaultRequest, wait = { attempts: 12, delay: 400 }, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)) }) {
-  async function status() {
+  async function statusBase() {
     const endpoint = await readEndpoint(dir);
     if (!endpoint) return { ok: true, running: false };
     try {
       const health = await send(endpoint, '/health');
+      const connections=await send(endpoint,'/connections').catch(()=>({}));
       return {
         ok: true,
         running: true,
         pid: endpoint.pid,
         state: health.state,
+        connection:connectionStatus(connections,'dsh'),
         sessions: health.sessions ?? 0,
         instances: health.instances ?? 0,
         release: health.release?.version,
@@ -27,6 +31,10 @@ export function createPetControl({ dir, ensure, readEndpoint = defaultReadEndpoi
       if (isUnreachable(error)) return { ok: true, running: false, stale: true };
       return { ok: true, running: true, pid: endpoint.pid, state: 'unknown', error: error.message };
     }
+  }
+  async function status(){
+    const value=await statusBase(),runtime=await readRuntimeProgress(dir);
+    return runtime?{...value,runtime}:value;
   }
   return {
     status,

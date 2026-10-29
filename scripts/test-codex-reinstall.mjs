@@ -1,0 +1,25 @@
+// Uses the real Codex CLI with an isolated CODEX_HOME; no model calls or user configuration changes.
+import path from 'node:path';
+import {mkdir,mkdtemp,readFile} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import {IntegrationManager} from '../src/integrations/manager.js';
+import {createAdapterPackage} from '../src/integrations/packages.js';
+const executable=path.resolve(process.argv[2]),base=path.resolve('output/codex-reinstall');await mkdir(base,{recursive:true});
+const work=await mkdtemp(path.join(base,'case-')),config=path.join(work,'home'),dir=path.join(work,'data');
+const manager=new IntegrationManager({dir,root:process.cwd(),bridge:path.join(work,'LingPetBridge.exe'),version:'0.0.1'});
+const target={source:'codex',config,executable};await mkdir(config,{recursive:true});
+const other=path.join(work,'other-market'),otherId='00000000-0000-4000-8000-000000000001';
+await createAdapterPackage({source:'codex',id:otherId,destination:other,bridge:manager.bridge,version:'0.0.1'});
+await manager.executeHost(target,['plugin','marketplace','add',other]);
+const first=await manager.install(target);
+manager.version=JSON.parse(await readFile('package.json','utf8')).version;
+const updated=await manager.install(target);assert.equal(updated.id,first.id);
+const repeated=await manager.install(target);assert.equal(repeated.id,first.id);
+const records=await manager.records();records[0].state='partial';records[0].enabled=false;records[0].packageRoot=path.join(work,'failed-source');await manager.save(records);
+const recovered=await manager.install(target);assert.equal(recovered.state,'installed');assert.equal(recovered.id,first.id);
+const {stdout}=await manager.executeHost(target,['plugin','marketplace','list','--json']);const markets=JSON.parse(stdout).marketplaces;
+assert.equal(markets.find(m=>m.name==='lingpet-'+first.id).root,recovered.packageRoot);
+assert.equal(markets.find(m=>m.name==='lingpet-'+otherId).root,other);
+const cache=JSON.parse(await readFile(path.join(config,'plugins/cache','lingpet-'+first.id,'board-pet/local/plugin.json'),'utf8'));
+assert.equal(cache.version,manager.version);
+console.log(JSON.stringify({ok:true,version:cache.version,upgrade:true,reinstall:true,partialRecovery:true,otherMarketplacePreserved:true,work}));

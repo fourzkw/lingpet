@@ -4,12 +4,12 @@ import path from 'node:path';
 import {readFile,realpath} from 'node:fs/promises';
 import {CreationStore,safeId} from './store.js';
 import {validateAppearance} from './validation.js';
-import {CHARACTER_IDS} from '../characters.js';
+import {CHARACTER_IDS,BUILTIN_CHARACTERS} from '../characters.js';
 export async function loadCustomAppearances(dir){
   const store=new CreationStore(dir),roles=await store.list('characters');
   const entries=await store.list('appearances'),valid=[];
   for(const entry of entries){
-    if(!roles.some(r=>r.id===entry.character)&&!CHARACTER_IDS.includes(entry.character)&&!(entry.community&&/^community-[a-z0-9-]{3,64}$/.test(entry.character)))continue;
+    if(!roles.some(r=>r.id===entry.character)&&!CHARACTER_IDS.includes(entry.character)&&!BUILTIN_CHARACTERS.some(c=>c.id===entry.character)&&!(entry.community&&/^community-[a-z0-9-]{3,64}$/.test(entry.character)))continue;
     const root=path.join(dir,'appearances',safeId(entry.id));
     const report=await validateAppearance(root);if(report.valid&&report.complete)valid.push({...entry,root,manifest:report.manifest,doneMs:maxClipDuration(report.manifest.clips.done)+100});
   }

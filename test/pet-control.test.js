@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createPetControl } from '../src/pet-control.js';
+import {connectionStatus} from '../src/connection-status.js';
 
 const endpoint = { version: 1, url: 'http://127.0.0.1:4123', token: 'a'.repeat(64), pid: 991 };
 const health = { version: 1, name: 'board-ai-pet', state: 'working', sessions: 2, instances: 1, release: { version: '0.1.7' } };
@@ -62,7 +63,7 @@ test('status maps the health document and start is a no-op while the pet runs', 
     send: async (_endpoint, route) => { routes.push(route); return route === '/health' ? health : { ok: true }; },
   });
   assert.deepEqual(await control.status(), {
-    ok: true, running: true, pid: 991, state: 'working', sessions: 2, instances: 1, release: '0.1.7',
+    ok: true, running: true, pid: 991, state: 'working', sessions: 2, instances: 1, release: '0.1.7',connection:connectionStatus({},'dsh'),
   });
   const started = await control.start();
   assert.equal(started.ok, true);
@@ -85,7 +86,7 @@ test('stop asks the pet to quit and reports a stopped pet as a no-op', async () 
     },
   });
   assert.deepEqual(await control.stop(), { ok: true, running: false, stopped: true });
-  assert.deepEqual(routes, ['/health', '/quit']);
+  assert.deepEqual(routes, ['/health', '/connections', '/quit']);
 
   const idle = createPetControl({ dir: 'X', ensure: async () => {}, readEndpoint: async () => null, send: async () => { throw new Error('不应该发请求'); } });
   assert.deepEqual(await idle.stop(), { ok: true, running: false, stopped: false, alreadyStopped: true });

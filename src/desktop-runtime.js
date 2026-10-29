@@ -5,6 +5,7 @@ import {resolveAppearanceAliases} from './creation/appearance-identity.js';
 import {githubLinks} from './market/links.js';
 import {app,BrowserWindow,ipcMain,Tray,Menu,nativeImage,screen,dialog,shell} from 'electron';
 import {readFile,writeFile,mkdir,unlink} from 'node:fs/promises';
+import {desktopStorage,validateStorageTarget} from './maintenance/desktop-data.js';
 import {writeFileSync} from 'node:fs';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
@@ -15,14 +16,15 @@ import {resolveFollow,bindingFor} from './follow-resolver.js';
 import {startLocalServer} from './local-server.js';
 import {STATES,LABELS} from './protocol.js';
 import {describeRelease} from './release.js';
-import {prepareSharedRuntime,compareVersions} from './shared-runtime.js';
+import {prepareSharedRuntime,compareVersions,confirmRunningSharedRuntime} from './shared-runtime.js';
 import {runtimeExecutable} from './bootstrap.js';
 import {petWindowSize,positionPetWindow,beginPetDrag} from '../desktop/window-geometry.js';
 import {liveContents,isWindowSender,loadPaintedWindow,showLoadedWindow} from '../desktop/window-lifecycle.js';
 import {petMenuTemplate} from '../desktop/pet-menu.js';
 import {quickControlsModel} from '../desktop/quick-controls-model.js';
 import {PET_SCALES,visibilityPatch} from './pet-display.js';
-import {appearanceInfo,setCustomAppearances} from './characters.js';
+import {appearanceInfo,setCustomAppearances,configureBundledAssets} from './characters.js';
+import {availableBuiltinAssets,retainExternalAppearances} from './bundled-appearances.js';
 import {loadCustomAppearances,publicAppearances,appearanceSheet} from './creation/catalog.js';
 
 import {CreationService} from './creation/service.js';
@@ -32,28 +34,37 @@ import {loginStartupOptions} from './login-startup.js';
 import {diagnosticReport} from './diagnostics.js';
 import {installPetpack} from './market/package.js';
 import {SettingsStore} from './settings-store.js';
+import {IntegrationManager} from './integrations/manager.js';
+import {startIntegrationGateway} from './integrations/gateway.js';
+import {existsSync} from 'node:fs';
 export async function launchDesktop(dir){
   await app.whenReady();await mkdir(dir,{recursive:true});
-  if(!process.env.BOARD_PET_SMOKE&&!process.env.BOARD_PET_LIFECYCLE_SMOKE&&!process.env.BOARD_PET_MULTI_SMOKE){
+  const desktop=existsSync(path.join(PACKAGE_ROOT,'desktop-distribution.json'))||process.env.LINGPET_DESKTOP==='1';
+  const installRoot=process.env.LINGPET_INSTALL_ROOT||path.resolve(PACKAGE_ROOT,'../../../..');
+  if(!desktop&&!process.env.BOARD_PET_SMOKE&&!process.env.BOARD_PET_LIFECYCLE_SMOKE&&!process.env.BOARD_PET_MULTI_SMOKE){
     const managed=await prepareSharedRuntime(dir);
     if(path.resolve(PACKAGE_ROOT)!==path.resolve(managed.root)){
       app.relaunch({execPath:await runtimeExecutable(dir,{root:managed.root}),args:[path.join(managed.root,'desktop/main.js'),...process.argv.slice(2)]});app.quit();return;
     }
   }
+  const bundledAssets=await availableBuiltinAssets(PACKAGE_ROOT);
+  await retainExternalAppearances(dir,bundledAssets);
+  configureBundledAssets(bundledAssets);
   const market=new MarketService(dir);
   let customCharacters=await new CreationStore(dir).list('characters');
   let customAppearances=await loadCustomAppearances(dir);setCustomAppearances(customAppearances,customCharacters);
   const settingsStore=new SettingsStore(dir,raw=>{resolveAppearanceAliases(raw.pets,customAppearances);return new PetRegistry(raw).config;});
   const raw=await settingsStore.load();
   const registry=new PetRegistry(raw),store=new StateStore(),windows=new Map(),views=new Map(),demos=new Map();
-  let activePetId=registry.pets[0]?.id??null,settingsWindow,settingsReady,settingsDisplayReady=false,quickWindow,quickPetId,tray,server,quitting=false,updating=false;
+  let activePetId=registry.pets[0]?.id??null,settingsWindow,settingsReady,settingsDisplayReady=false,quickWindow,quickPetId,tray,server,quitting=false,updating=false,movingStorage=false;
   let contentRoot=PACKAGE_ROOT,release=await describeRelease(),saveQueue=Promise.resolve();
+  const integrations=new IntegrationManager({dir,root:PACKAGE_ROOT,bridge:path.join(installRoot,'LingPetBridge.exe'),version:release.version});let integrationGateway;
   const recentErrors=[],updateFile=path.join(dir,'update-status.json');let updateStatus={phase:'idle',message:'尚未进行本地更新'};
   function recordError(area,error){recentErrors.push({time:new Date().toISOString(),area,message:String(error.message??error).slice(0,500)});if(recentErrors.length>30)recentErrors.shift();}
   if(settingsStore.recovery)recordError('配置恢复',settingsStore.recovery.source==='backup'?'配置损坏或丢失，已从最近有效备份恢复':'配置与备份不可用，已保留损坏文件并使用默认配置');
   async function updateProgress(phase,message,version=release.version){updateStatus={phase,message,version,time:Date.now()};await writeFile(updateFile,JSON.stringify(updateStatus));liveContents(settingsWindow)?.send('pet:system-update',updateStatus);}
   try{updateStatus=JSON.parse(await readFile(updateFile,'utf8'));if(updateStatus.phase==='restarting')await updateProgress(updateStatus.version===release.version?'ready':'error',updateStatus.version===release.version?'更新已完成':'新版启动未完成，已恢复当前版本，可重新选择更新包');else if(['validating','installing'].includes(updateStatus.phase))await updateProgress('error','上次更新未完成，当前版本仍可使用，可重新选择更新包');}catch{}
-  function configureLogin(enabled){const options=loginStartupOptions({enabled,executable:app.getPath('exe'),root:contentRoot,packaged:app.isPackaged});app.setLoginItemSettings(options);return app.getLoginItemSettings({path:options.path,args:options.args}).openAtLogin;}
+  function configureLogin(enabled){const options=loginStartupOptions({enabled,executable:desktop?path.join(installRoot,'LingPet.exe'):app.getPath('exe'),root:contentRoot,packaged:desktop||app.isPackaged});app.setLoginItemSettings(options);return app.getLoginItemSettings({path:options.path,args:options.args}).openAtLogin;}
   if(registry.config.global.launchAtLogin)try{configureLogin(true);}catch(error){recordError('开机启动',error);}
   const resumeFile=path.join(dir,'runtime-restart.json');
   if(process.argv.includes('--hot-restart')){
@@ -79,7 +90,7 @@ export async function launchDesktop(dir){
   function petList(){return registry.pets.map(p=>({...p,current:currentFor(p.id)}));}
   function snapshot(id=activePetId,includeList=true){
     const pet=registry.get(id),current=currentFor(id);
-    return {...store.snapshot(),customCharacters,customAppearances:publicAppearances(customAppearances),current,settings:{...DEFAULT_PET,...pet,launchAtLogin:registry.config.global.launchAtLogin},selected:pet?.follow.mode==='session'?current.key:null,labels:LABELS,pets:includeList?petList():[],activePetId:id,animationKey:views.get(id)?.animationKey,animationStartedAt:views.get(id)?.startedAt??Date.now(),global:registry.config.global};
+    return {...store.snapshot(),distribution:desktop?'desktop':'plugin',customCharacters,bundledAssets,customAppearances:publicAppearances(customAppearances),current,settings:{...DEFAULT_PET,...pet,launchAtLogin:registry.config.global.launchAtLogin},selected:pet?.follow.mode==='session'?current.key:null,labels:LABELS,pets:includeList?petList():[],activePetId:id,animationKey:views.get(id)?.animationKey,animationStartedAt:views.get(id)?.startedAt??Date.now(),global:registry.config.global};
   }
   function broadcast(){
     if(quitting)return;
@@ -205,7 +216,18 @@ export async function launchDesktop(dir){
     if(body?.action==='generation-api-configure')return new GenerationAPISettings(dir).configure(body.kind,body.values);
     if(body?.action==='status'||body?.action==='diagnostics'){
       const report=diagnosticReport({release,pets:registry.pets,sessions:store.snapshot().sessions,uptime:process.uptime(),memory:process.memoryUsage(),logs:recentErrors,update:updateStatus,platform:process.platform,login:registry.config.global.launchAtLogin});
-      return {...report,settingsRecovery:settingsStore.recovery,loginSupported:process.platform==='win32'||process.platform==='darwin'&&app.isPackaged};
+      return {...report,storage:await desktopStorage(dir),distribution:desktop?'desktop':'plugin',settingsRecovery:settingsStore.recovery,loginSupported:process.platform==='win32'||process.platform==='darwin'&&app.isPackaged};
+    }
+    if(body?.action==='change-storage'){
+      if(!desktop)throw Error('请使用独立本体安装版修改内容目录');
+      if(movingStorage||updating)throw Error('正在维护应用，请稍候');
+      const tasks=await new CreationStore(dir).list('tasks');
+      if(tasks.some(task=>['submitting','submission_unknown','queued','running','processing','finalizing','cancelling'].includes(task.status)))throw Error('请先完成或取消正在进行的创作任务，再修改内容目录');
+      const selected=await dialog.showOpenDialog(settingsWindow,{title:'选择新的内容目录（空文件夹）',properties:['openDirectory','createDirectory']});if(selected.canceled)return {cancelled:true};
+      const target=await validateStorageTarget({root:installRoot,dir,target:selected.filePaths[0]});if(target.unchanged)return {unchanged:true};
+      const answer=await dialog.showMessageBox(settingsWindow,{type:'question',title:'迁移内容目录',message:'迁移现有内容并重新打开灵伴？',detail:'新目录：'+target.target+'\n设置、下载的桌宠、形象和创作内容将复制到新位置。原内容会保留备份，Agent 接入不变。',buttons:['迁移并重启','取消'],defaultId:1,cancelId:1});if(answer.response!==0)return {cancelled:true};
+      await save();movingStorage=true;
+      try{const child=spawn(path.join(installRoot,'LingPetMaintenance.exe'),['--move-data',target.target],{cwd:installRoot,windowsHide:true,stdio:'ignore',env:{...process.env,BOARD_PET_DATA_DIR:dir,LINGPET_INSTALL_ROOT:installRoot}});await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject);});child.unref();return {restarting:true};}catch(error){movingStorage=false;throw error;}
     }
     if(body?.action==='open-settings-folder'){const error=await shell.openPath(dir);if(error)throw new Error(error);return {opened:true};}
     if(body?.action==='restore-settings'){
@@ -229,26 +251,41 @@ export async function launchDesktop(dir){
       const selected=await dialog.showSaveDialog(settingsWindow,{title:'导出运行诊断',defaultPath:'lingpet-diagnostics.json',filters:[{name:'运行诊断',extensions:['json']}]});if(selected.canceled)return {cancelled:true};await writeFile(selected.filePath,JSON.stringify(report,null,2));return {path:selected.filePath};
     }
     if(body?.action==='install-update'){
+      if(desktop)throw Error('请先从托盘退出灵伴，再运行新版 LingPet 安装程序升级；桌宠配置与形象会保留。');
       if(updating||['validating','installing'].includes(updateStatus.phase))throw new Error('正在更新，请稍候');
       const selected=await dialog.showOpenDialog(settingsWindow,{title:'选择已解压的灵伴更新包目录',properties:['openDirectory']});if(selected.canceled)return {cancelled:true};
       try{await updateProgress('validating','正在校验更新包…');const offered=await describeRelease(selected.filePaths[0]);if(compareVersions(offered.version,release.version)<=0)throw new Error('请选择比当前版本更新的安装包');return await updateRuntime({root:offered.root});}catch(error){recordError('安装更新',error);const message=error.code==='ENOENT'?'所选目录不是完整的灵伴更新包，请选择解压后的程序目录。':error.message;await updateProgress('error',message);throw new Error(message);}
     }
     throw new Error('未知应用管理操作');
   });
+  ipcMain.handle('pet:integrations',async(event,body)=>{
+    if(!isWindowSender(event,settingsWindow))throw Error('仅工作台可管理 Agent 接入');
+    if(body?.action==='list')return {...await integrations.discover(),desktop};
+    if(body?.action==='choose'){
+      const config=body.kind==='config';const selected=await dialog.showOpenDialog(settingsWindow,{title:config?'选择宿主配置目录':'选择宿主命令文件',properties:[config?'openDirectory':'openFile'],...(!config?{filters:[{name:'命令入口',extensions:['exe','cmd','bat']}]}:{})});
+      return {path:selected.canceled?null:selected.filePaths[0]};
+    }
+    if(!desktop)throw Error('请使用独立本体安装版管理接入');
+    if(body?.action==='plan'){const plan=await integrations.plan(body.target);return {steps:plan.steps,changes:plan.changes.map(change=>({file:change.file})),source:plan.source};}
+    if(body?.action==='install')return integrations.install(body.target);
+    if(body?.action==='inspect')return integrations.inspect(body.id);
+    if(body?.action==='remove')return integrations.remove(body.id);
+    throw Error('未知接入操作');
+  });
   ipcMain.handle('pet:character',async(event,body)=>{if(!isWindowSender(event,settingsWindow))throw new Error('无效的窗口');const result=await new CreationService(dir).character(body||{});await reloadAppearances();return result;});
   ipcMain.handle('pet:market',async(event,body)=>{
     if(!isWindowSender(event,settingsWindow))throw new Error('仅工作台可访问市场管理');
     if(body?.action==='config')return market.config();
-    if(body?.action==='library'){const result=await market.library({checkUpdates:Boolean(body.checkUpdates)});return {...result,activeAppearance:registry.get(activePetId)?.appearance};}
+    if(body?.action==='library'){const result=await market.library({checkUpdates:Boolean(body.checkUpdates),appearances:customAppearances});return {...result,activeAppearance:registry.get(activePetId)?.appearance};}
     if(body?.action==='uninstall'){
-      const entry=customAppearances.find(e=>e.id===body.appearanceId&&e.package);if(!entry)throw new Error('该形象未安装');
+      const entry=customAppearances.find(e=>e.id===body.appearanceId);if(!entry)throw new Error('该形象未安装');
       const ids=new Set([entry.id,...(entry.aliases||[]).map(a=>a.id)]),used=registry.pets.filter(p=>ids.has(p.appearance));
-      const answer=await dialog.showMessageBox(settingsWindow,{type:'question',title:'卸载形象',message:'卸载「'+entry.package.name+'」？',detail:used.length?'正在使用的桌宠将恢复为默认角色，跟随设置保留。':'将从本机角色库移除此形象，可再次安装。',buttons:['卸载','取消'],defaultId:1,cancelId:1});if(answer.response!==0)return {cancelled:true};
+      const answer=await dialog.showMessageBox(settingsWindow,{type:'question',title:'卸载形象',message:'卸载「'+(entry.package?.name||entry.name)+'」？',detail:used.length?'正在使用的桌宠将恢复为默认角色，跟随设置保留。':'将从本机角色库移除此形象，可再次安装。',buttons:['卸载','取消'],defaultId:1,cancelId:1});if(answer.response!==0)return {cancelled:true};
       await market.uninstall(entry.id);for(const pet of used)registry.update(pet.id,{character:DEFAULT_PET.character,appearance:DEFAULT_PET.appearance,variant:DEFAULT_PET.variant});
       await reloadAppearances();return {snapshot:snapshot()};
     }
     if(body?.action==='use-version'){
-      const entry=customAppearances.find(e=>e.id===body.appearanceId&&e.package);if(!entry)throw new Error('该版本未安装');const pet=registry.require(body.petId);manage({action:'update',id:pet.id,value:{character:entry.character,appearance:entry.id,variant:entry.variants.includes(pet.variant)?pet.variant:entry.variants[0]}});await save();return {snapshot:snapshot()};
+      const entry=customAppearances.find(e=>e.id===body.appearanceId);if(!entry)throw new Error('该版本未安装');const pet=registry.require(body.petId);manage({action:'update',id:pet.id,value:{character:entry.character,appearance:entry.id,variant:entry.variants.includes(pet.variant)?pet.variant:entry.variants[0]}});await save();return {snapshot:snapshot()};
     }
     if(body?.action==='configure')return market.configure(body.url);
     if(body?.action==='list')return market.list(body.query);
@@ -306,12 +343,14 @@ export async function launchDesktop(dir){
     {label:'显示所有桌宠',click:()=>{for(const p of registry.pets)registry.update(p.id,visibilityPatch(true));}},
     {type:'separator'},{label:'退出全部桌宠',click:quitAll},
   ]));}
-  function quitAll(){if(quitting)return;writeFileSync(path.join(dir,'runtime.paused'),'用户已退出全部桌宠');quitting=true;setTimeout(async()=>{await saveQueue.catch(()=>{});await server?.close();app.quit();},50);}
+  function quitAll(){if(quitting)return;writeFileSync(path.join(dir,'runtime.paused'),'用户已退出全部桌宠');quitting=true;setTimeout(async()=>{await saveQueue.catch(()=>{});await integrationGateway?.close();await server?.close();app.quit();},50);}
   registry.on('change',()=>{syncWindows();trayMenu();void save();broadcast();});
   store.on('change',broadcast);syncWindows();await save();
   tray=new Tray(nativeImage.createFromPath(path.join(PACKAGE_ROOT,'assets/tray.png')));tray.setToolTip('灵伴 · 多桌宠');trayMenu();tray.on('double-click',()=>openSettings());
-  const tick=setInterval(()=>{store.tick();broadcast();},1000);
+  let confirming=false,lastConfirmation=0;
+  const tick=setInterval(()=>{store.tick();broadcast();if(!desktop&&!confirming&&Date.now()-lastConfirmation>5000){confirming=true;lastConfirmation=Date.now();void confirmRunningSharedRuntime(dir).catch(error=>recordError('运行版本同步',error)).finally(()=>{confirming=false;});}},1000);
   async function updateRuntime(body){
+    if(desktop)throw Error('本体由独立安装程序维护，请运行新版 LingPet 安装程序');
     if(updating)return {action:'restarting'};
     const offered=await describeRelease(body.root);
     if(compareVersions(offered.version,release.version)<0)return {action:'ignored',reason:'older-version'};
@@ -332,16 +371,25 @@ export async function launchDesktop(dir){
     },150);
     return {action:'restarting'};
   }
-  server=await startLocalServer(store,dir,{reloadAppearances,getRelease:()=>release,quitPet:quitAll,showDashboard:body=>{openSettings(body?.petId);return {ok:true};},petManager:{list:()=>({ok:true,pets:petList(),activePetId}),manage},updateRuntime});
+  server=await startLocalServer(store,dir,{distribution:desktop?'desktop':'plugin',reloadAppearances,getRelease:()=>release,quitPet:quitAll,showDashboard:body=>{openSettings(body?.petId);return {ok:true};},petManager:{list:()=>({ok:true,pets:petList(),activePetId}),manage},updateRuntime});
+  if(desktop){
+    const control={async run(action){
+      if(!['status','start','stop','settings'].includes(action))throw Error('无效管理操作');
+      if(action==='settings')openSettings();
+      if(action==='start'){if(!registry.pets.length)manage({action:'create',value:{name:'灵伴'}});for(const pet of registry.pets)registry.update(pet.id,visibilityPatch(true));}
+      if(action==='stop')for(const pet of registry.pets)registry.update(pet.id,visibilityPatch(false));
+      return {running:true,pets:petList(),runtime:{phase:'ready',message:'灵伴本体已内置运行环境'},state:store.current().state};
+    }};
+    integrationGateway=await startIntegrationGateway({manager:integrations,store,control,creation:new CreationService(dir)});
+  }else await confirmRunningSharedRuntime(dir);
   app.on('second-instance',(_event,args)=>{if(args.includes('--dashboard'))openSettings();else for(const pet of registry.pets)registry.update(pet.id,visibilityPatch(true));});
   if(process.argv.includes('--dashboard')||process.argv.includes('--demo')||settingsStore.recovery)openSettings();
   if(process.argv.includes('--demo')&&activePetId){demos.set(activePetId,{state:'thinking',stamp:Date.now()});broadcast();}
   app.on('window-all-closed',()=>{});
-  app.on('before-quit',()=>{quitting=true;clearInterval(tick);for(const c of windows.values())stopDrag(c,false);for(const id of demos.keys())clearDemo(id);void server?.close();});
+  app.on('before-quit',()=>{quitting=true;clearInterval(tick);for(const c of windows.values())stopDrag(c,false);for(const id of demos.keys())clearDemo(id);void integrationGateway?.close();void server?.close();});
   app.on('will-quit',()=>tray?.destroy());
   const first=windows.values().next().value;
   if(process.env.BOARD_PET_SMOKE==='1'&&first){const {runDesktopSmoke}=await import('../scripts/desktop-smoke.mjs');await runDesktopSmoke({app,petWindow:first.window,openSettings,getSettingsWindow:()=>settingsWindow,store,dir,snapshot});}
   if(process.env.BOARD_PET_LIFECYCLE_SMOKE==='1'&&first){const {runWindowLifecycleSmoke}=await import('../scripts/window-lifecycle-smoke.mjs');await runWindowLifecycleSmoke({app,ipcMain,petWindow:first.window,petReady:first.ready,openSettings,getSettingsWindow:()=>settingsWindow,getSettingsReady:()=>settingsReady});}
   if(process.env.BOARD_PET_MULTI_SMOKE==='1'){const {runMultiPetSmoke}=await import('../scripts/multi-pet-smoke.mjs');await runMultiPetSmoke({app,registry,store,windows,openSettings,getSettingsWindow:()=>settingsWindow,getSettingsReady:()=>settingsReady,dir,snapshot});}
 }
-

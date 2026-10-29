@@ -1,4 +1,4 @@
-import {$,api,notice,text,btn,initPreview,repositoryLinks} from './common.js';
+import {$,api,notice,text,btn,initPreview,repositoryLinks,petStats} from './common.js';
 import {attachCardPreview} from './card-preview.js';
 const detail=initPreview(),statuses={queued:'排队校验',validating:'正在校验',pending:'等待审核',approved:'已上架',rejected:'已驳回',unpublished:'已下架',failed:'校验失败'};
 let tab='market';
@@ -17,7 +17,7 @@ async function load(){
   const badge=text('span',r.preview?'可预览动作':'封面展示');badge.className='pet-badge';cover.append(badge,im);attachCardPreview(cover,r);
   const info=document.createElement('div');info.className='pet-card-info';const description=text('p',r.pet.description||'一位等待与你相遇的桌面伙伴。');description.className='pet-card-description';
   const footer=document.createElement('div');footer.className='pet-card-footer';footer.append(text('span','v'+r.pet.version+' · '+(r.preview?.variants||['封面展示']).map(v=>v==='original'?'原图':v==='pixel'?'像素':v).join(' / ')),btn('认识一下 ↗',()=>detail(r)));
-  info.append(text('h2',r.pet.name),text('p','by '+r.pet.author),description,footer);c.append(cover,info);$('cards').append(c);
+  info.append(text('h2',r.pet.name),text('p','by '+r.pet.author),description,petStats(r),footer);c.append(cover,info);$('cards').append(c);
  }
  if(!rows.length){const empty=document.createElement('div');empty.className='empty-market';const icon=document.createElement('img');icon.src='/brand.svg';icon.alt='';empty.append(icon,text('h2',query?'还没找到这位伙伴':'这里正等待第一位伙伴'),text('p',query?'试试其他名称、作者，或清空搜索看看。':'分享你的创作，让这间小小集市热闹起来。'));empty.append(btn(query?'查看全部伙伴 ↗':'分享我的作品 ↗',()=>{if(query){$('search').value='';return load();}return setTab('submit');}));$('cards').append(empty);}
  }catch(error){if(revision!==loadRevision)return;$('cards').replaceChildren();$('resultCount').textContent='暂时无法读取伙伴列表';const empty=document.createElement('div');empty.className='empty-market';empty.append(text('h2','伙伴们还在路上'),text('p',error.message),btn('重新加载 ↻',()=>load()));$('cards').append(empty);notice(error.message);}

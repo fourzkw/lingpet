@@ -1,11 +1,11 @@
 import {createVideoPlayer} from './video-player.js';
 import {maxClipDuration} from './action-clips.js';
 import claude from '../assets/interactions/claude/manifest.js';
-import whale from '../assets/interactions/deepseek-h3/manifest.js';
-import whiteDragon from '../assets/interactions/chatgpt-white-dragon-h3/manifest.js';
-import cloudDragon from '../assets/interactions/chatgpt-dragon/manifest.js';
 
-const manifests={claude,'deepseek-h3':whale,'chatgpt-white-dragon-h3':whiteDragon,'chatgpt-dragon':cloudDragon};
+const manifests={claude};
+const optional=new Map();
+function loadOptional(asset){if(!['deepseek-h3','chatgpt-white-dragon-h3','chatgpt-dragon'].includes(asset))return Promise.resolve();if(!optional.has(asset))optional.set(asset,import(new URL('../assets/interactions/'+asset+'/manifest.js',import.meta.url).href).then(({default:manifest})=>{manifests[asset]=manifest;}));return optional.get(asset);}
+export const readyInteractionManifest=loadOptional;
 const players=new Map();
 const custom=new Map();
 export function syncInteractionAssets(entries=[]){
@@ -21,13 +21,14 @@ function playerFor(asset){
   if(!players.has(asset))players.set(asset,createVideoPlayer(new URL(`../assets/interactions/${asset}/`,import.meta.url),manifests[asset]));
   return players.get(asset);
 }
-export function readyInteraction(asset,kind,variant='pixel'){
+export async function readyInteraction(asset,kind,variant='pixel'){
+  if(!manifestFor(asset))await loadOptional(asset);
   const manifest=manifestFor(asset);
   if(!manifest)return Promise.resolve();
   return playerFor(asset).readyState(kind,manifest.variants.includes(variant)?variant:manifest.variants[0]);
 }
 export function paintInteraction(ctx,asset,kind,elapsed,width,height,variant,entryKey){
-  const manifest=manifestFor(asset);if(!manifest?.clips[kind])return false;
+  const manifest=manifestFor(asset);if(!manifest){void loadOptional(asset).catch(()=>{});return false;}if(!manifest.clips[kind])return false;
   playerFor(asset).paint(ctx,kind,elapsed,width,height,manifest.variants.includes(variant)?variant:manifest.variants[0],entryKey);
   return true;
 }

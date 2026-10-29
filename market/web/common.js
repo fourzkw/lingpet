@@ -7,7 +7,7 @@ export function btn(t,fn){const b=document.createElement("button");b.textContent
 export function initPreview(){let current,start=0,images=new Map();
 async function detail(r){
  current=r;images.clear();$('detailTitle').textContent=r.pet.name+' · '+r.pet.version;$('detailDescription').textContent=r.pet.description;
- $('detailInfo').replaceChildren();$('detailInfo').textContent='作者：'+r.pet.author+' / 授权：'+r.pet.license+' / '+(r.size/1048576).toFixed(1)+' MiB';$('hash').textContent='市场条目编号：'+r.id;$('detailInfo').append(repositoryLinks(r));
+ $('detailInfo').replaceChildren();$('detailInfo').textContent='作者：'+r.pet.author+' / 授权：'+r.pet.license+' / '+(r.size/1048576).toFixed(1)+' MiB';$('hash').textContent='市场条目编号：'+r.id;$('detailInfo').append(petStats(r),repositoryLinks(r));
  for(const id of ['state','variant']){$(id).replaceChildren();$(id).parentElement.hidden=!r.preview;}
  for(const [v,label]of Object.entries(r.preview?labels:{})){const o=text('option',label);o.value=v;$('state').append(o);}
  for(const v of r.preview?.variants||[]){const o=text('option',v==='original'?'原图':'像素');o.value=v;$('variant').append(o);}
@@ -26,4 +26,10 @@ export function repositoryLinks(record){
  if(typeof repo!=='string'||!/^([A-Za-z0-9][A-Za-z0-9-]{0,38})\/([A-Za-z0-9_.-]{1,100})$/.test(repo)||repo.includes('..'))return root;
  const base='https://github.com/'+repo;
  for(const [label,url]of [['GitHub 仓库',base],['对应 Release',base+'/releases/tag/'+encodeURIComponent(record.tag||'')]]){const a=text('a',label);a.href=url;a.target='_blank';a.rel='noopener noreferrer';root.append(a,document.createTextNode(' '));}return root;
+}
+
+export function petStats(record){
+ const root=document.createElement('p');root.className='pet-stats';root.title='下载量为当前版本分享包的 GitHub 下载次数；Star 为作者仓库获星数';
+ const count=value=>Number.isSafeInteger(value)&&value>=0?value.toLocaleString('zh-CN'):'暂不可用';
+ root.append(text('span','↓ 下载 '+count(record.stats?.downloads)),text('span','★ Star '+count(record.stats?.stars)));return root;
 }

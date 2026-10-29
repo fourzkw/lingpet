@@ -4,3 +4,7 @@ main{max-width:620px;margin:auto;padding:30px 22px 20px}.brand{display:flex;alig
 .pet strong{min-width:0;overflow-wrap:anywhere}.pet span{flex-shrink:0}
 
 .brand:before{background:var(--accent);border:0;border-radius:0;mask:url(./brand.svg) center/contain no-repeat;-webkit-mask:url(./brand.svg) center/contain no-repeat}.brand-mark{display:block;width:32px;height:32px;flex:none;color:var(--accent)}.brand:has(.brand-mark):before{display:none}
+
+#runtimeProgress{width:100%;accent-color:var(--accent,#b4472f);margin-bottom:16px}#runtimeProgress[hidden]{display:none}
+
+.runtime-info{margin-top:18px;border-top:1px solid var(--line);padding-top:14px;font-size:12px}.runtime-info p{line-height:1.8;color:var(--muted);overflow-wrap:anywhere}

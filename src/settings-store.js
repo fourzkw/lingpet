@@ -1,6 +1,7 @@
-import {readFile,writeFile,rename,unlink,mkdir} from 'node:fs/promises';
+import {readFile,writeFile,unlink,mkdir} from 'node:fs/promises';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
+import {atomicRename} from './atomic-directory.js';
 
 // Only malformed JSON/configuration is recoverable. Permission and disk errors
 // must surface instead of silently replacing a user's settings with defaults.
@@ -19,7 +20,7 @@ export class SettingsStore {
   }
   async atomic(file,text){
     const temp=file+'.'+randomUUID()+'.tmp';
-    try{await writeFile(temp,text,{flag:'wx',mode:0o600});await rename(temp,file);}
+    try{await writeFile(temp,text,{flag:'wx',mode:0o600});await atomicRename(temp,file);}
     finally{await unlink(temp).catch(error=>{if(error.code!=='ENOENT')throw error;});}
   }
   async preserve(text,label='corrupt'){

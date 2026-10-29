@@ -44,7 +44,7 @@ export function apply(ctx,config={}) {
   Object.defineProperty(observer,'includeSubagents',{get:()=>read(config.includeSubagents,false)});
   observer.seq=lease.record.seq;
   const release=describeRelease();release.catch(()=>{});
-  bridge=new BridgeClient({dir,instanceId:observer.instanceId,release,getIncludeSubagents:()=>read(config.includeSubagents,false),ensureRuntime:()=>read(config.autoStart,true)?ensureRuntime(dir):undefined});
+  bridge=new BridgeClient({dir,source:'dsh',instanceId:observer.instanceId,release,getIncludeSubagents:()=>read(config.includeSubagents,false),ensureRuntime:()=>read(config.autoStart,true)?ensureRuntime(dir):undefined});
   bridge.onReconnect=()=>observer.resync();
   ctx.on('session/event',(session,event)=>{
     try{observer.observe(String(session.id),event);}catch(error){console.warn('[board-ai-pet] 状态观察失败:',error.message);}

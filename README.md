@@ -1,8 +1,22 @@
 # 灵伴 · LingPet
 
-**当前版本 0.6.2：连接退出加固与配置恢复。** 支持 DSH、Cursor、Codex 三种本机会话来源。桥接退出等待进行中的连接与运行时准备完成，避免退出后残留操作；重复启动不叠加心跳定时器。配置自动保留最近有效备份，损坏或丢失时自动恢复；工作台「应用设置 → 配置备份与恢复」可手动恢复并打开配置文件夹。
+**0.7.14 本体优先架构（开发中）**：新增 Windows 独立安装包和工作台「Agent 接入」，本体携带运行环境，按需安装轻量 Codex、Cursor、DSH 接入。构建、使用和旧版迁移边界见 [独立本体安装](docs/desktop-installation.md)。下文 0.6.x 的完整插件安装方式作为历史兼容说明保留。
 
-当前 0.6.6 支持按设置优先级通过生图 API、Seedance、MiniMax 或 ComfyUI 创作桌宠。配置与完整流程见 [云端生成说明](docs/generation-services.md)。
+**桌宠当前版本 0.7.14**（以 package.json 为准）。安装包仅内置 Claude 像素形象；鲸鱼娘、白羽龙姬、云羽龙姬分别提供独立 `.petpack`，在工作台导入后使用，保留八种状态、原图／像素版本和点击、摸头动作。升级会从旧运行时缓存保留正在使用的旧内置形象及配置。支持 Windows 本机 DSH、Cursor、Codex 三种会话来源；网站服务独立版本见 market/VERSION。
+
+0.6.19 修复 Codex 下载提示缺失：启动请求立即返回并由面板持续查询，始终显示 Electron 状态与首次下载说明，更新面板资源标识避免复用旧页面。
+
+0.6.18 为 Cursor 侧边栏、Codex 管理面板和独立控制页补齐 Electron 下载进度，启动等待期间持续刷新状态。
+
+0.6.17 新增 Electron 首次下载提示：DSH 终端和桌宠设置页显示下载大小、百分比、解压及失败原因。运行时未启动时也可查看进度。
+
+0.6.16 显式声明创作工具所需的 Zod 4，避免在 DSH 中误用宿主的 Zod 3 而启动失败；DSH bundle 补丁改为纯 insert，兼容插件市场热挂载，不再修改宿主 HMR 开关。
+
+首次使用请从 [安装与接入检查](docs/getting-started.md) 开始：选择宿主 → 检查环境 → 安装插件 → 显示桌宠 → 验证真实会话。下载对应宿主的发布包即可；下面的构建命令供源码开发使用。
+
+0.6.15 修复健康运行版本与共享启动记录不同步、延迟启动器误回退，以及 Cursor 本地副本不更新的问题。新增卸载预览、保留数据卸载、备份后重置流程，见 [卸载与重装](docs/uninstall-and-reinstall.md)。默认发布包仍不携带 Electron 二进制。
+
+支持按设置优先级通过生图 API、Seedance、MiniMax 或 ComfyUI 创作桌宠。配置与完整流程见 [云端生成说明](docs/generation-services.md)。
 
 以下为历史版本记录；安装请使用下文当前版本步骤。
 
@@ -26,7 +40,7 @@
 
 **0.3.13 品牌更新。** 应用名称统一为「灵伴」，工程包名为 `lingpet`，新增 `lingpet` CLI 命令。保留旧 CLI、接入协议、插件标识与 `BoardAiPet` 数据目录，已有桌宠及跟随配置继续使用。
 
-本地打包：`npm pack --pack-destination artifacts`，生成 `lingpet-0.6.2.tgz`。
+本地打包：`npm pack --pack-destination artifacts`，生成 `lingpet-<package.json 版本>.tgz`。
 
 **0.3.12 改进桌宠管理。** 界面名称统一为 Claude；我的桌宠列表为每只实例提供直接删除入口，使用工作台内确认框。支持删除最后一只后重新新增，不删除角色素材或其他实例。
 
@@ -61,25 +75,25 @@
 已实现 Windows 本机 Cursor 原生插件，通过 Hooks 同步思考、并行工具执行、完成、出错和中断。DSH 与 Cursor 共用桌宠；工作台支持来源识别与筛选。
 
 ```powershell
-node scripts/build-cursor-plugin.mjs artifacts/cursor-board-pet-0.6.2
-node scripts/install-cursor-plugin.mjs artifacts/cursor-board-pet-0.6.2
+node scripts/build-cursor-plugin.mjs artifacts/cursor-board-pet-local
+node scripts/install-cursor-plugin.mjs artifacts/cursor-board-pet-local
 ```
 
-构建目录必须不存在；后续构建使用新的目录名。安装后重启 Cursor 并创建新的 Agent 会话。需要 PATH 中 Node.js >=22.19，构建包自带当前平台的 Electron 与生产依赖。首次准备无需 DSH 或模型 API Key。详见 [Cursor 插件说明](cursor-plugin/README.md) 和 [接入架构](docs/cursor-integration.md)。实际 Cursor 版本及审批组合行为仍需现场验收，自动测试覆盖真实 Hook 子进程、本机桥接和桌宠渲染。
+构建目录必须不存在；后续构建使用新的目录名。安装后重启 Cursor 并创建新的 Agent 会话。需要 PATH 中 Node.js >=22.19，构建包包含生产依赖和 Electron 下载组件，默认不携带 Electron 二进制；首次启动下载并校验运行时，之后复用用户缓存。首次准备无需 DSH 或模型 API Key。详见 [Cursor 插件说明](cursor-plugin/README.md) 和 [接入架构](docs/cursor-integration.md)。实际 Cursor 版本及审批组合行为仍需现场验收，自动测试覆盖真实 Hook 子进程、本机桥接和桌宠渲染。
 
 ## 安装到 DSH
 
-先在项目目录执行 `npm ci`、`npm run check` 和 `npm pack --pack-destination artifacts`，生成当前版本 `artifacts/lingpet-0.6.2.tgz`。
+使用发布的 .tgz 无需自行构建。源码开发者可在项目目录执行 `npm ci`、`npm run check` 和 `npm pack --pack-destination artifacts`，生成 `artifacts/lingpet-<package.json 版本>.tgz`。
 
 本机 DSH Web 版安装命令：
 
 ```powershell
-dsh plugin --profile web add "file:D:/_Project/board_ai_pet/artifacts/lingpet-0.6.2.tgz"
+dsh plugin --profile web add "file:C:/LingPet/lingpet-0.6.19.tgz"
 ```
 
-路径需替换为你的实际素材包位置。插件尚未发布到 npm，因此目前不能通过公共包名安装。将来发布后可以使用 `dsh plugin --profile web add lingpet`。
+路径与文件名需替换为你实际下载的插件包位置及版本。插件尚未发布到 npm，因此目前不能通过公共包名安装。
 
-运行中的DSH推荐通过应用内插件管理安装，以便立即应用。插件附带启用HMR的默认配置；如果用户配置明确关闭HMR，需先在DSH中启用，否则仍需要重启DSH。**profile必须匹配你正在使用的DSH实例**。DSH Desktop 用户应在应用内插件管理安装，或先初始化Desktop、退出应用，再用Desktop提供的 `dsh` 命令执行 `dsh plugin --profile desktop add <包路径>`；普通npm安装的DSH命令不能管理Desktop profile。
+运行中的DSH推荐通过应用内插件管理安装，以便立即应用。插件使用纯 insert 补丁，不修改宿主 HMR 设置；如果用户配置关闭HMR，需先在DSH中启用，否则仍需要重启DSH。**profile必须匹配你正在使用的DSH实例**。DSH Desktop 用户应在应用内插件管理安装，或先初始化Desktop、退出应用，再用Desktop提供的 `dsh` 命令执行 `dsh plugin --profile desktop add <包路径>`；普通npm安装的DSH命令不能管理Desktop profile。
 
 插件首次启用会自动：
 
@@ -115,7 +129,7 @@ dsh plugin --profile web add "file:D:/_Project/board_ai_pet/artifacts/lingpet-0.
 
 ## 使用
 
-- 轻点角色会点头回应；不按鼠标，在头部来回移动几次会触发眯眼轻晃和爱心提示。四个内置形象拥有独立的点击、摸头动作；互动结束后恢复会话状态，新会话状态会立即接管。
+- 轻点角色会点头回应；不按鼠标，在头部来回移动几次会触发眯眼轻晃和爱心提示。Claude 和三个独立形象包均拥有点击、摸头动作；互动结束后恢复会话状态，新会话状态会立即接管。
 - 按住并移动角色可拖动位置，右键角色打开快捷控制，在菜单中选择“打开工作台”进入完整设置。
 - 角色下方悬停按钮可打开设置、切换角色、隐藏角色。
 - 工作台支持角色切换、大小、置顶、状态提示、多会话选择和动作试映。

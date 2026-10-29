@@ -34,7 +34,7 @@ export async function startCodexService(dir,{autoStart=true,ownerCheck=codexRunn
   if(!lock)return null;
   await lock.writeFile(String(process.pid));
   let server,timer,stopping=false,closing,busy=false,lastEvent=Date.now(),ownerMisses=0;
-  const client=new BridgeClient({dir,instanceId:'codex-'+randomUUID(),release:describeRelease(),ensureRuntime:autoStart?()=>ensureRuntime(dir):undefined,logger:{warn(){}}});
+  const client=new BridgeClient({dir,source:'codex',instanceId:'codex-'+randomUUID(),release:describeRelease(),ensureRuntime:autoStart?()=>ensureRuntime(dir):undefined,logger:{warn(){}}});
   const observer=new CodexObserver(event=>client.enqueue(event),{instanceId:client.instanceId});
   client.onReconnect=()=>observer.replay();
   const close=()=>{

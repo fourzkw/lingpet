@@ -9,8 +9,8 @@ import {paintWhiteDragonVideo} from './white-dragon-video-actions.js';
 import {paintInteraction} from './interaction-actions.js';
 export const ORDER=['idle','thinking','working','input','approval','done','error','sleep'];
 
-export function paint(ctx,{settings,current,customAppearances,customCharacters,animationKey,interaction},elapsed,width,height){
-  if(customAppearances)syncCustomAppearances(customAppearances,customCharacters);
+export function paint(ctx,{settings,current,customAppearances,customCharacters,bundledAssets,animationKey,interaction},elapsed,width,height){
+  if(customAppearances)syncCustomAppearances(customAppearances,customCharacters,bundledAssets);
   ctx.clearRect(0,0,width,height);
   const state=ORDER.includes(current.state)?current.state:'idle';
   const disabled=current.state==='offline';

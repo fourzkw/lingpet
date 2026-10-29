@@ -15,10 +15,16 @@ export async function runDesktopSmoke({app,petWindow,openSettings,getSettingsWin
     const assetReady=await dashboard.webContents.executeJavaScript(`(async()=>{try{const {readyPixelAssets}=await import('./pixel-pet.js');await readyPixelAssets();return 'ready';}catch(error){return error.stack||String(error);}})()`);
     expect(assetReady==='ready',`pixel action assets load: ${assetReady}`);
     const endpoint=await readEndpoint(dir);await request(endpoint,'/register',{instanceId:'desktop-smoke'});
+    expect(await dashboard.webContents.executeJavaScript("Boolean(document.querySelector('.onboarding')) && !document.getElementById('onboardingHint').textContent.includes('验证通过')"),'onboarding does not accept registration as real integration');
     const emit=async(state,seq,turn=1)=>{await request(endpoint,'/event',{version:1,instanceId:'desktop-smoke',sessionId:'local-smoke-session',turn,state,seq});await pause(200);};
     await emit('working',1);await pause(400);
     expect(await dashboard.webContents.executeJavaScript("document.getElementById('connection').textContent.includes('已连接')"),'DSH connection indicator');
     expect(await dashboard.webContents.executeJavaScript("document.getElementById('currentState').textContent.includes('执行工具')"),'real state reaches dashboard');
+    expect(await dashboard.webContents.executeJavaScript("document.getElementById('onboardingHint').textContent.includes('验证通过')"),'new real event verifies onboarding');
+    await dashboard.webContents.executeJavaScript("document.getElementById('onboardingTest').click()");
+    expect(await dashboard.webContents.executeJavaScript("!document.getElementById('onboardingHint').textContent.includes('验证通过')"),'recheck requires a fresh event');
+    for(const width of [1200,640]){dashboard.setContentSize(width,900);await pause(100);expect(await dashboard.webContents.executeJavaScript('document.documentElement.scrollWidth<=innerWidth'),'onboarding has no horizontal overflow at '+width);}
+    dashboard.setContentSize(1200,900);
     await writeFile(path.join(out,'claude-dashboard.png'),(await dashboard.webContents.capturePage()).toPNG());
     await dashboard.webContents.executeJavaScript("document.querySelector('[data-character=deepseek]').click()");await pause(900);
     expect(await dashboard.webContents.executeJavaScript("document.querySelector('[data-character=deepseek]').classList.contains('selected')"),'DeepSeek character toggle');

@@ -7,10 +7,12 @@ import {readyPixelAssets} from './pixel-pet.js';
 import {CHARACTERS,VARIANTS,characterInfo,appearanceInfo,appearanceLabel} from '../src/characters.js';
 import {PET_SCALES,scaleStep,scaleLabel,petIsVisible,visibilityPatch} from '../src/pet-display.js';
 import {initSettingsExtras} from './settings-extras.js';
+import {initOnboarding} from './onboarding.js';
+import {initIntegrationsUI} from './integrations-ui.js';
 await readyPixelAssets();
 let data=await window.pet.get(),start=performance.now()-Math.max(0,Date.now()-(data.animationStartedAt??Date.now())),previous=data.animationKey,toastTimer,petListSignature='',pendingSessionSelection=false,pendingRemovalId=null;
 applyTheme(data.global?.theme);
-syncCustomAppearances(data.customAppearances,data.customCharacters);
+syncCustomAppearances(data.customAppearances,data.customCharacters,data.bundledAssets);
 const $=id=>document.getElementById(id);
 let scaleEditing=false;
 function renderScale(step){
@@ -18,13 +20,14 @@ function renderScale(step){
   $('scale').setAttribute('aria-valuetext',`第 ${step+1} 档，共 9 档，${scaleLabel(scale)}`);
   for(const tick of document.querySelectorAll('.scale-ticks span'))tick.classList.toggle('selected',Number(tick.dataset.step)===step);
 }
-let marketUI,extras;
+let marketUI,extras,onboarding;
+const integrationsUI=initIntegrationsUI({toast,snapshot:()=>data,onChange:()=>onboarding?.render()});
 const characterGrid=document.querySelector('.character-grid');characterGrid.replaceChildren();
 function renderCharacters(){characterGrid.replaceChildren();
 for(const character of CHARACTERS){
   const button=document.createElement('button');button.className='character-card';button.dataset.character=character.id;button.dataset.requiresPet='';button.onclick=()=>character.appearances.length?change({character:character.id}):toast('请通过创作工具导入完整形象，角色 ID：'+character.id);
   const title=document.createElement('div');title.className='character-title';title.textContent=character.name;const check=document.createElement('span');check.className='check';check.textContent='✓';title.append(check);
-  const description=document.createElement('p');description.textContent=character.appearances.length?character.appearances.length+' 个形象':'待创作 · '+character.id;button.append(title,description);characterGrid.append(button);
+  const description=document.createElement('p');description.textContent=character.appearances.length?(character.appearances.some(a=>a.asset==='claude')?'默认内置':'已安装')+' · '+character.appearances.length+' 个形象':'待创作 · '+character.id;button.append(title,description);characterGrid.append(button);
 }
 }
 renderCharacters();
@@ -75,7 +78,7 @@ for(const name of ['appearance','interaction','follow']){
 }
 function update(value){
   applyTheme(value.global?.theme);
-  if(syncCustomAppearances(value.customAppearances,value.customCharacters)){
+  if(syncCustomAppearances(value.customAppearances,value.customCharacters,value.bundledAssets)){
     renderedCharacter=undefined;
     renderCharacters();
   }
@@ -93,6 +96,8 @@ function update(value){
   $('followDescription').textContent=pendingSessionSelection?'尚未绑定：请在下方选择一个会话，或切回自动跟随。':follow.mode==='session'?'已固定：'+sourceName(follow.source)+' · '+follow.sessionId:follow.mode==='source'?'仅响应 '+sourceName(follow.source)+' 的会话状态。':'自动响应所有来源的会话，优先提示需要你处理的状态。';
   for(const element of document.querySelectorAll('[data-requires-pet]'))element.disabled=!value.activePetId;
   extras?.render();
+  onboarding?.render();
+  integrationsUI.render();
   renderAppearances(value.settings);
   $('connection').classList.toggle('connected',value.instances>0);
   const sources=[...new Set(value.sessions.filter(s=>s.connected&&s.state!=='offline').map(s=>sourceName(s.source)))];
@@ -173,5 +178,4 @@ frameLoop(now=>{
 });
 
 marketUI=initMarketUI({snapshot:()=>data,update,toast});
-extras=initSettingsExtras({snapshot:()=>data,change,toast});document.addEventListener('lingpet:theme',event=>update(event.detail));update(data);
-
+extras=initSettingsExtras({snapshot:()=>data,change,toast});onboarding=initOnboarding({snapshot:()=>data,integrations:()=>integrationsUI.getState()});document.addEventListener('lingpet:theme',event=>update(event.detail));update(data);
