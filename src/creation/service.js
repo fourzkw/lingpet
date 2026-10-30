@@ -72,23 +72,33 @@ export class CreationService{
   async assets(id){return (await this.store.list('assets')).filter(a=>a.projectId===id);}
   async tasks(id){const project=await this.store.read('projects',id);return (await this.store.list('tasks')).filter(t=>t.projectId===id).map(t=>({...t,stale:Boolean(t.baseId&&t.baseId!==project.selectedBase)}));}
   async asset(projectId,id){const a=await this.store.read('assets',id);if(a.projectId!==projectId)throw new Error('资源不属于该项目');return a;}
-  async generation_settings({action='inspect',kind,values,priorities}={}){
-    if(!['inspect','configure'].includes(action))throw new Error('未知生成设置操作');if(action==='configure'&&(!kind||!values)&&!priorities)throw new Error('请提供服务配置或优先级');
+  async generation_settings({action='inspect',kind,values,priorities,serviceId}={}){
+    if(!['inspect','configure','save-video','remove-video'].includes(action))throw new Error('未知生成设置操作');if(action==='configure'&&(!kind||!values)&&!priorities)throw new Error('请提供服务配置或优先级');
     const settings=new GenerationAPISettings(this.dir);
     if(action==='configure'){if(kind&&values)await settings.configure(kind,values);if(priorities)await settings.setPriorities(priorities);}
-    return {apis:await settings.get(),priorities:await settings.priorities(),comfyui:await new ComfySettings(this.dir).get(),selection:'auto 按已启用顺序选择已配置服务；仅在提交前跳过不可用服务，提交失败或结果不明不会自动重提或切换。'};
+    let savedVideoId;if(action==='save-video')savedVideoId=(await settings.saveVideo(serviceId,values)).savedVideoId;
+    if(action==='remove-video')await settings.removeVideo(serviceId);
+    return {apis:await settings.get(),priorities:await settings.priorities(),...(savedVideoId?{savedVideoId}:{}),comfyui:await new ComfySettings(this.dir).get(),selection:'宿主具备 ImageGen 时生图传 hostTools:["imagegen"]，被选中返回 requires_host_tool 供助手调用宿主工具并导入。auto 按已启用顺序选择已配置服务；仅在提交前跳过不可用服务，提交失败或结果不明不会自动重提或切换。'};
   }
-  async generationProvider(kind,provider='auto'){
-    if(!providerIds[kind]?.includes(provider)&&provider!=='auto')throw new Error('该生成类型不支持此服务');
+  async generationProvider(kind,provider='auto',hostTools=[]){
+    const available=kind==='video'?[...(await new GenerationAPISettings(this.dir).read()).videoApis.map(v=>v.id),'seedance','minimax','comfyui']:providerIds[kind];
+    if(!available?.includes(provider)&&provider!=='auto')throw new Error('该生成类型不支持此服务');
     const settings=new GenerationAPISettings(this.dir),rows=(await settings.priorities())[kind],candidates=provider==='auto'?rows.filter(r=>r.enabled).map(r=>r.id):[provider],reasons=[];
     for(const id of candidates){
+      if(id==='imagegen'){if(provider==='imagegen'||hostTools.includes('imagegen'))return {id};reasons.push('当前宿主未提供 Codex ImageGen');continue;}
       if(id!=='comfyui'){try{const config=await new RemoteGeneration(this).configuration(id,kind);return {id,config};}catch(error){reasons.push(error.message);if(provider!=='auto')throw error;}}
       else{try{const config=await this.store.config(),profile=kind==='image'?'qwen':'h3',info=await this.client(config).json('/object_info'),env=environment(info,config.models);if(!env.profiles[profile].ready)throw new Error('ComfyUI 模型或节点不齐全：'+JSON.stringify(env.profiles[profile]));return {id,info};}catch(error){reasons.push(error.message);if(provider!=='auto')throw error;}}
     }
     throw new Error('没有可用的生成服务：'+(reasons.join('；')||'全部服务已禁用'));
   }
   async generate(kind,p){return this.store.lock(async()=>{
-    const route=await this.generationProvider(kind,p.provider);if(route.id!=='comfyui')return new RemoteGeneration(this).submit(kind,p,route.id);
+    const route=await this.generationProvider(kind,p.provider,p.hostTools);
+    if(route.id==='imagegen'){
+      const project=await this.store.read('projects',p.projectId),references=[];
+      for(const id of p.referenceIds||[]){const asset=await this.asset(project.id,id);if(!asset.mimeType.startsWith('image/'))throw new Error('参考输入必须是图像');if(digest(await readFile(this.store.assetPath(id)))!==asset.sha256)throw new Error('输入资源被改动');references.push({id,path:this.store.assetPath(id),mimeType:asset.mimeType});}
+      return {provider:'imagegen',status:'requires_host_tool',projectId:project.id,hostTool:'imagegen',requestedSize:{...(p.apiSize!==undefined?{apiSize:p.apiSize}:{}),...(p.size!==undefined?{size:p.size}:{}),...(p.width!==undefined?{width:p.width}:{}),...(p.height!==undefined?{height:p.height}:{})},prompt:p.prompt,negativePrompt:p.negativePrompt||'',brief:project.brief,constraints:project.constraints,references,instructions:'使用当前 Codex 会话的 ImageGen 工具，根据 prompt、negativePrompt、项目 brief/constraints、requestedSize 和参考图片生成。先查看参考图。生成完成后调用 board_pet_project action:add_reference，传 projectId、生成文件的绝对 path（无本地路径时传 base64）、purpose:base；审阅后用 select_base 选定。此返回仅表示交接，尚未提交生成或创建后台任务；若宿主无 ImageGen 工具，报告不可用。'};
+    }
+    if(route.id!=='comfyui')return new RemoteGeneration(this).submit(kind,p,route.id);
     if(p.durationSeconds!==undefined||p.resolution!==undefined||p.apiSize!==undefined)throw new Error('API 专用参数不能用于 ComfyUI，请明确选择 API 服务或移除这些参数');
     const project=await this.store.read('projects',p.projectId),config=await this.store.config(),client=this.client(config);
     const profile=kind==='image'?'qwen':'h3',info=route.info,env=environment(info,config.models);

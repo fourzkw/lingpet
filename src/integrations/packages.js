@@ -33,7 +33,8 @@ export async function createAdapterPackage({source,id,destination,bridge,version
   }else if(source==='dsh'){
     if(!templateRoot)throw Error('安装包缺少 DSH 适配器');
     await cp(path.join(templateRoot,'adapters/dsh'),destination,{recursive:true});
+    await cp(path.join(templateRoot,'skills'),path.join(destination,'skills'),{recursive:true});
     await write('connection.json',{id,dir});
-    const pkg=JSON.parse(await readFile(path.join(destination,'package.json'),'utf8'));pkg.version=version;await write('package.json',pkg);
+    const pkg=JSON.parse(await readFile(path.join(destination,'package.json'),'utf8'));pkg.version=version;pkg.files=[...new Set([...(pkg.files||[]),'skills'])];await write('package.json',pkg);
   }else throw Error('不支持的 Agent');
 }

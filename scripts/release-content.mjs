@@ -28,7 +28,7 @@ export async function releaseAssets(root){
 }
 
 export async function copyReleaseRuntime(root,target){
- for(const name of ['src','desktop','bin','skills','docs','README.md','package.json'])await cp(path.join(root,name),path.join(target,name),{recursive:true});
+ for(const name of ['src','desktop','bin','skills','docs','README.md','LICENSE','package.json'])await cp(path.join(root,name),path.join(target,name),{recursive:true});
  const assets=await releaseAssets(root);let assetBytes=0;
  for(const name of assets){const to=path.join(target,name);await mkdir(path.dirname(to),{recursive:true});await cp(path.join(root,name),to);assetBytes+=(await stat(to)).size;}
  return {assetFiles:assets.length,assetBytes};

@@ -1,5 +1,5 @@
 // Execute with the development Electron binary, passing the packaged runtime directory.
-import {app,BrowserWindow} from 'electron';
+import {app,BrowserWindow,dialog} from 'electron';
 import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import path from 'node:path';
@@ -24,6 +24,35 @@ async function run(){try{
  await dashboard.webContents.executeJavaScript("document.getAnimations().forEach(animation=>animation.finish())");
  await dashboard.webContents.capturePage(undefined,{stayHidden:true,stayAwake:true});await new Promise(resolve=>setTimeout(resolve,150));
  await writeFile(path.join(out,'storage-settings.png'),(await dashboard.webContents.capturePage(undefined,{stayHidden:true,stayAwake:true})).toPNG());
+ await dashboard.webContents.executeJavaScript(`(async()=>{
+  const {createMarketDownload}=await import('./market-download.js');const {navigate}=await import('./navigation.js');navigate('market');
+  const probe=window.downloadProbe={};const host=document.createElement('p');host.id='downloadProbeHost';document.getElementById('marketStatus').after(host);
+  probe.run=createMarketDownload({host,subscribe:callback=>{probe.emit=callback;probe.unsubscribe=window.pet.onMarketProgress(callback);},call:body=>{probe.id=body.requestId;return new Promise((resolve,reject)=>{probe.resolve=resolve;probe.reject=reject;});}});
+  probe.panel=host.nextElementSibling;probe.pending=probe.run({action:'install'}).catch(error=>probe.error=error.message);
+  return true;
+ })()`);
+ dashboard.webContents.send('pet:market-progress',{requestId:await dashboard.webContents.executeJavaScript('downloadProbe.id'),phase:'downloading',transferred:4*1048576,total:8*1048576});
+ for(let i=0;i<20&&!await dashboard.webContents.executeJavaScript("downloadProbe.panel.querySelector('progress').value===50");i++)await new Promise(resolve=>setTimeout(resolve,50));
+ assert.equal(await dashboard.webContents.executeJavaScript("!downloadProbe.panel.hidden&&downloadProbe.panel.querySelector('progress').value===50&&downloadProbe.panel.textContent.includes('4.0 MiB / 8.0 MiB')"),true,'market download shows real byte totals and a determinate progress bar');
+ await new Promise(resolve=>setTimeout(resolve,400));await dashboard.webContents.executeJavaScript("downloadProbe.panel.scrollIntoView({block:'center',behavior:'instant'});document.getAnimations().forEach(animation=>animation.finish())");
+ await dashboard.webContents.capturePage(undefined,{stayHidden:true,stayAwake:true});await new Promise(resolve=>setTimeout(resolve,150));
+ await writeFile(path.join(out,'market-download-progress.png'),(await dashboard.webContents.capturePage(undefined,{stayHidden:true,stayAwake:true})).toPNG());
+ assert.equal(await dashboard.webContents.executeJavaScript("(()=>{downloadProbe.emit({requestId:'old-request',phase:'downloading',transferred:99,total:100});return downloadProbe.panel.querySelector('progress').value===50;})()"),true,'stale download events cannot change current progress');
+ assert.equal(await dashboard.webContents.executeJavaScript("(()=>{downloadProbe.emit({requestId:downloadProbe.id,phase:'downloading',transferred:4194304,total:null});return !downloadProbe.panel.querySelector('progress').hasAttribute('value')&&downloadProbe.panel.textContent.includes('总大小未知');})()"),true,'unknown download lengths stay indeterminate');
+ assert.equal(await dashboard.webContents.executeJavaScript("(()=>{downloadProbe.emit({requestId:downloadProbe.id,phase:'verifying'});return !downloadProbe.panel.querySelector('progress').hasAttribute('value')&&downloadProbe.panel.textContent.includes('正在校验');})()"),true,'verification has a separate visible phase');
+ assert.equal(await dashboard.webContents.executeJavaScript("(async()=>{downloadProbe.reject(Error('test failure'));await downloadProbe.pending;return downloadProbe.panel.hidden&&downloadProbe.error==='test failure';})()"),true,'failed downloads stop and hide progress');
+ await dashboard.webContents.executeJavaScript("downloadProbe.unsubscribe();downloadProbe.panel.remove();document.getElementById('downloadProbeHost').remove();delete window.downloadProbe");
+ const originalOpenDialog=dialog.showOpenDialog;let cancelLocalImport;
+ dialog.showOpenDialog=()=>new Promise(resolve=>{cancelLocalImport=()=>resolve({canceled:true,filePaths:[]});});
+ try{
+  await dashboard.webContents.executeJavaScript("document.getElementById('importPetpack').click()");
+  for(let i=0;i<20&&!cancelLocalImport;i++)await new Promise(resolve=>setTimeout(resolve,50));
+  assert.ok(cancelLocalImport,'local import opens the local file picker');
+  assert.equal(await dashboard.webContents.executeJavaScript("document.getElementById('marketStatus').textContent==='正在导入并校验资源包…'&&[...document.querySelectorAll('.market-download-progress')].every(panel=>panel.hidden)"),true,'local import never shows GitHub download status or download progress');
+  cancelLocalImport();
+  for(let i=0;i<20&&!await dashboard.webContents.executeJavaScript("document.getElementById('marketStatus').textContent==='已取消'");i++)await new Promise(resolve=>setTimeout(resolve,50));
+  assert.equal(await dashboard.webContents.executeJavaScript("document.getElementById('marketStatus').textContent==='已取消'&&!document.getElementById('importPetpack').disabled"),true,'cancelling local import restores its controls');
+ }finally{dialog.showOpenDialog=originalOpenDialog;}
  await dashboard.webContents.executeJavaScript("document.getElementById('showMyPets').click()");
  if(await dashboard.webContents.executeJavaScript("Boolean(document.getElementById('openIntegrations'))")){
    assert.equal(await dashboard.webContents.executeJavaScript("(async()=>{document.getElementById('onboardingConnect').click();const result=await window.pet.integrations({action:'list'});return !document.getElementById('integrationsView').hidden&&result.targets.length===3&&!JSON.stringify(result).includes('controlToken')&&document.querySelectorAll('#integrationsView #hostConnections p').length===3;})()"),true,'first-connection button opens centralized Agent status');

@@ -36,7 +36,7 @@ func TestPublicPagesAndPrivateAdminEntry(t *testing.T) {
 	}
 }
 func TestPluginDownloadsAndRange(t *testing.T) {
-	s, ts, c := fixtureServer(t)
+	s, ts, c := fixtureLegacyDownloadServer(t)
 	s.cfg.DownloadDir = t.TempDir()
 	data := []byte("fixture-plugin-package")
 	file := "lingpet-1.0.0.tgz"

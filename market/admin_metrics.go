@@ -128,20 +128,6 @@ func (s *Server) stats(days int) (map[string]any, error) {
 	for _, a := range records {
 		states[a.Status]++
 	}
-	releases, e := s.releaseList()
-	if e != nil {
-		return nil, e
-	}
-	published := 0
-	var storage int64
-	for _, a := range releases {
-		if a.Published {
-			published++
-		}
-		if a.Available {
-			storage += a.Size
-		}
-	}
 	totals := map[string]Metric{}
 	daily := map[string]map[string]Metric{}
 	e = s.store.db.View(func(tx *bolt.Tx) error {
@@ -174,13 +160,13 @@ func (s *Server) stats(days int) (map[string]any, error) {
 		date := now.AddDate(0, 0, -i).Format("2006-01-02")
 		values := daily[date]
 		var downloadCount, downloadBytes int64
-		for _, host := range []string{"dsh", "cursor", "codex"} {
+		for _, host := range []string{"desktop", "dsh", "cursor", "codex"} {
 			downloadCount += values["download."+host].Count
 			downloadBytes += values["download."+host].Bytes
 		}
 		rows = append(rows, map[string]any{"date": date, "home": values["visit.home"].Count, "market": values["visit.market"].Count, "downloads": downloadCount, "bytes": downloadBytes})
 	}
-	return map[string]any{"version": strings.TrimSpace(marketVersion), "timezone": "Asia/Shanghai", "submissions": states, "submissionTotal": len(records), "releaseTotal": len(releases), "published": published, "packageBytes": storage, "totals": totals, "daily": rows, "uploadLimit": maxInstallerBytes}, nil
+	return map[string]any{"version": strings.TrimSpace(marketVersion), "timezone": "Asia/Shanghai", "submissions": states, "submissionTotal": len(records), "downloadProvider": "github", "releaseURL": desktopReleaseURL, "totals": totals, "daily": rows}, nil
 }
 func statsDays(r *http.Request) int {
 	v, _ := strconv.Atoi(r.URL.Query().Get("days"))

@@ -1,0 +1,63 @@
+#integrationsView{max-width:1160px}
+.integrations-heading{align-items:flex-start;margin-bottom:26px}
+.integrations-heading>.button{flex-shrink:0;margin-top:10px}
+.integration-notice{padding:12px 16px;border:1px solid var(--line);border-radius:var(--control-radius);background:var(--surface);font-size:12px;line-height:1.8;margin:0 0 20px;overflow-wrap:anywhere}
+.integration-notice:empty{display:none}
+.integration-section-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.integration-section-heading h2{font-size:15px;line-height:1.6;margin:0}
+.integration-section-heading>span{font-size:10px;color:var(--muted)}
+.integration-connections{margin-bottom:26px}
+.integration-connections>.integration-section-heading{margin-bottom:12px}
+#hostConnections{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:stretch}
+.integration-connection-card{padding:16px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);min-width:0;box-shadow:var(--panel-shadow)}
+.integration-connection-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.integration-connection-heading strong{font-size:13px}
+.integration-connection-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0}
+.integration-connection-card[data-state=active] .integration-connection-dot{background:var(--green)}
+.integration-connection-card[data-state=waiting] .integration-connection-dot,.integration-connection-card[data-state=management] .integration-connection-dot{background:var(--accent)}
+.integration-connection-label{font-size:11px;line-height:1.8;margin:10px 0 0;color:var(--muted)}
+.integration-connection-card details{margin-top:8px}
+.integration-connection-card summary{font-size:11px;cursor:pointer;color:var(--accent)}
+.integration-connection-card details p{font-size:11px;line-height:1.9;color:var(--muted);margin:8px 0 0;overflow-wrap:anywhere}
+.integrations-workspace{display:grid;grid-template-columns:minmax(280px,.9fr) minmax(340px,1.1fr);gap:20px;align-items:start}
+.integrations-workspace>.panel{margin:0;padding:22px}
+#integrationForm{max-width:none}
+#integrationForm .integration-source-field{display:grid;gap:8px;margin:20px 0 12px}
+#integrationSource{width:100%;font-size:13px;min-height:42px}
+.integration-detection{padding:12px 14px;margin:0 0 18px;background:var(--surface-soft);border:1px solid var(--line);border-radius:var(--control-radius);font-size:11px;line-height:1.9;color:var(--muted)}
+#integrationAdvanced{border:1px solid var(--line);border-radius:var(--control-radius);padding:12px 14px;margin:18px 0}
+#integrationAdvanced>summary{cursor:pointer;font-size:12px;font-weight:600}
+#integrationAdvanced>summary span{display:block;font-size:10px;color:var(--muted);font-weight:400;margin:4px 0 0 14px}
+.integration-advanced-fields{display:grid;gap:16px;padding-top:18px}
+#integrationForm .integration-field{min-width:0}
+#integrationForm .integration-field>label{display:block;margin:0 0 7px;font-size:11px}
+.integration-input-row{display:flex;align-items:center;gap:8px;min-width:0}
+#integrationForm .integration-input-row input{flex:1;min-width:0;width:0;margin:0;font-size:11px}
+.integration-input-row .button{flex-shrink:0;font-size:11px;padding:8px 10px}
+.integration-field>.quiet{display:block;font-size:10px;line-height:1.9;color:var(--muted)}
+#integrationProfile{margin:0;max-width:160px}
+.integration-install-footer{padding-top:4px}
+.integration-install-footer>.button{width:100%;min-height:42px}
+.integration-install-footer>.section-description{font-size:11px;margin:12px 0 0}
+.integration-plan{margin-top:18px;border-top:1px solid var(--line);padding-top:14px;font-size:11px;line-height:1.9;color:var(--muted)}
+.integration-plan summary{cursor:pointer}
+.integration-plan ol{padding-left:20px;margin-bottom:0}
+#integrationList{display:grid;gap:12px;margin-top:18px}
+.integration-managed-card{padding:16px;border:1px solid var(--line);border-radius:var(--control-radius);min-width:0;background:var(--surface-soft)}
+.integration-item-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.integration-item-heading strong{font-size:13px}
+.integration-state{font-size:10px;line-height:1.7;padding:2px 8px;border:1px solid var(--line);border-radius:var(--control-radius);color:var(--muted);flex-shrink:0}
+.integration-state[data-state=installed]{color:var(--green)}
+.integration-state[data-state=partial],.integration-state[data-state=remove-pending]{color:var(--accent)}
+.integration-config-path{font-size:10px;font-family:var(--font-mono);color:var(--muted);overflow-wrap:anywhere;line-height:1.8;margin:9px 0}
+.integration-next-step{font-size:11px;color:var(--muted);line-height:1.9;margin:10px 0;overflow-wrap:anywhere}
+.integration-next-step:empty{display:none}
+.integration-managed-card .dialog-actions{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:7px;margin:14px 0 0;padding-top:12px;border-top:1px solid var(--line)}
+.integration-managed-card .button{font-size:11px;min-height:32px;padding:6px 10px}
+.integration-managed-card .integration-remove{margin-left:auto;color:var(--muted);background:transparent}
+.integration-managed-card .integration-remove:hover{color:var(--state-error,var(--accent))}
+.integration-empty{padding:30px 16px;text-align:center;border:1px dashed var(--line);border-radius:var(--control-radius);color:var(--muted)}
+.integration-empty strong{font-size:12px;font-weight:500}
+.integration-empty p{font-size:11px;line-height:1.9;margin:8px 0 0}
+@media(max-width:1100px){.integrations-workspace{grid-template-columns:minmax(0,1fr)}.integrations-workspace>.panel{padding:20px}}
+@media(max-width:720px){#hostConnections{grid-template-columns:minmax(0,1fr)}.integration-section-heading{align-items:flex-start}.integration-section-heading>span{max-width:140px;text-align:right}.integrations-heading{gap:10px}.integrations-heading>.button{font-size:11px;padding:8px 10px}.integration-connection-card{padding:14px}.integrations-workspace>.panel{padding:16px}.integration-input-row{flex-wrap:wrap}#integrationForm .integration-input-row input{flex-basis:160px}.integration-managed-card .dialog-actions{gap:6px}}

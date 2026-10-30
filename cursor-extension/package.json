@@ -70,6 +70,6 @@
       ]
     }
   },
-  "license": "UNLICENSED",
+  "license": "MIT",
   "icon": "media/app.png"
 }

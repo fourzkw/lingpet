@@ -1,16 +1,43 @@
+import {videoVendors,videoVendor} from '../src/creation/video-providers.js';
+import {createGenerationAPIForm} from './generation-api-form.js';
+
 export function initGenerationAPISettings(root,{toast}){
  const section=document.createElement('section');section.className='panel generation-api-settings';
- section.innerHTML='<h2>云端生成服务</h2><p class="section-description">AI 使用这里保存的地址、密钥和模型。生图支持 OpenAI Images 兼容协议；视频支持 Seedance、MiniMax。密钥留空保留原值。</p>';
+ section.innerHTML='<h2>云端生成服务</h2><p class="section-description">配置生图与视频服务。视频可按厂家添加多个 API，保存完整配置后自动加入上方优先级。密钥留空保留原值。</p>';
  const grid=document.createElement('div');grid.className='generation-api-grid';section.append(grid);
- const forms=new Map();let loaded=false,loading=false;
- function render(config){for(const [kind,form]of forms){const value=config[kind]||{};form.elements.url.value=value.url||'';form.elements.model.value=value.model||'';form.elements.apiKey.value='';form.elements.apiKey.placeholder=value.hasApiKey?'已保存密钥，留空保留':'输入 API Key（可选）';form.elements.clearApiKey.checked=false;if(form.elements.protocol)form.elements.protocol.value=value.protocol||'minimax-h3';}}
- async function load(){if(loaded||loading)return;loading=true;try{const config=await window.pet.system({action:'generation-api-config'});render(config);loaded=true;if(config.video?.url){const note=document.createElement('p');note.className='quiet';note.textContent='检测到旧版通用视频 API 配置。请将其地址和模型填入对应的 Seedance 或 MiniMax 配置；旧配置仍保留在本机。';section.append(note);}}catch(error){toast(error.message);}finally{loading=false;for(const form of forms.values())form.querySelector('button').disabled=!loaded;}}
- const specs=[['image','生图 API','https://your-service.example/v1','填写图像模型 ID'],['seedance','Seedance 视频','https://ark.cn-beijing.volces.com/api/v3','填写 Seedance 模型或接入点 ID'],['minimax','MiniMax 视频','https://api.minimax.io','填写 MiniMax-H3 或 Hailuo 模型 ID']];
- for(const [kind,title,url,model]of specs){
-  const form=document.createElement('form');form.className='market-form';
-  form.innerHTML=(kind==='minimax'?'<label>接口协议<select name="protocol"><option value="minimax-h3">MiniMax H3（v2）</option><option value="minimax-hailuo">MiniMax Hailuo（v1）</option></select></label>':'')+'<label>API 基础地址<input name="url" type="url" maxlength="2048" placeholder="'+url+'" autocomplete="off"></label><label>模型名称<input name="model" maxlength="2048" placeholder="'+model+'" autocomplete="off"></label><label>API 密钥<input name="apiKey" type="password" maxlength="8192" autocomplete="new-password" spellcheck="false"></label><label class="generation-clear-key"><input name="clearApiKey" type="checkbox"> 清除已保存的密钥</label><button class="button secondary" type="submit" disabled>保存'+title+'配置</button><p role="status" class="quiet"></p>';
-  form.onsubmit=async event=>{event.preventDefault();const button=form.querySelector('button'),status=form.querySelector('[role=status]');button.disabled=true;status.textContent='正在保存…';try{const values={url:form.elements.url.value,model:form.elements.model.value,apiKey:form.elements.apiKey.value,clearApiKey:form.elements.clearApiKey.checked,protocol:kind==='image'?'openai-images':kind==='seedance'?'seedance':form.elements.protocol.value};const config=await window.pet.system({action:'generation-api-configure',kind,values});const value=config[kind];form.elements.apiKey.value='';form.elements.apiKey.placeholder=value.hasApiKey?'已保存密钥，留空保留':'输入 API Key（可选）';form.elements.clearApiKey.checked=false;form.elements.url.value=value.url;status.textContent='配置已保存，AI 后续生成可按优先级使用此服务。';toast(title+'配置已保存');}catch(error){status.textContent=error.message;}finally{button.disabled=false;}};
-  const details=document.createElement('details');details.className='api-service-card';const summary=document.createElement('summary');summary.textContent=title;details.append(summary,form);forms.set(kind,form);grid.append(details);
+ const imageCard=document.createElement('details');imageCard.className='api-service-card';imageCard.innerHTML='<summary>生图 API</summary>';
+ const videoCard=document.createElement('details');videoCard.className='api-service-card video-api-card';
+ const summary=document.createElement('summary');summary.textContent='生视频 API';videoCard.append(summary);
+ const intro=document.createElement('p');intro.className='quiet';intro.textContent='选择厂家添加服务；同一厂家可以使用不同账号、地址或模型。';
+ const add=document.createElement('button');add.type='button';add.className='button secondary';add.textContent='添加视频 API';add.disabled=true;
+ const list=document.createElement('div');list.className='video-api-list';
+ const editor=document.createElement('div');editor.className='video-api-editor';
+ const status=document.createElement('p');status.className='quiet';status.setAttribute('role','status');
+ videoCard.append(intro,list,add,editor,status);grid.append(imageCard,videoCard);root.append(section);
+ let config=null,loading=false,loaded=false;
+ function changed(next){config=next;renderList();document.dispatchEvent(new CustomEvent('lingpet:generation-apis-changed',{detail:next}));}
+ function edit(value){editor.replaceChildren();const heading=document.createElement('h3');heading.textContent=value?'编辑视频 API':'添加视频 API';
+  const form=createGenerationAPIForm({kind:value?.id||'video-api',config:value||{vendor:videoVendors[0].id},video:true,toast,onSaved:next=>{changed(next);editor.replaceChildren();},onCancel:()=>editor.replaceChildren()});
+  editor.append(heading,form);if(!videoCard.open)videoCard.open=true;
  }
- root.append(section);document.addEventListener('lingpet:navigate',event=>{if(event.detail==='app')void load();});if(document.body.dataset.page==='app')void load();
+ function renderList(){
+  list.replaceChildren();const entries=config.videoApis||[];summary.textContent='生视频 API'+(entries.length?'（'+entries.length+'）':'');
+  if(!entries.length){const empty=document.createElement('p');empty.className='quiet';empty.textContent='尚未添加视频 API，当前可使用 ComfyUI。';list.append(empty);}
+  for(const entry of entries){
+   const card=document.createElement('div');card.className='video-api-entry';card.dataset.serviceId=entry.id;
+   const info=document.createElement('div'),name=document.createElement('strong'),description=document.createElement('p');name.textContent=entry.name;description.className='quiet';description.textContent=(videoVendor(entry.vendor)?.name||entry.vendor)+' · '+entry.model;info.append(name,description);
+   const actions=document.createElement('div');actions.className='dialog-actions';
+   const editButton=document.createElement('button');editButton.type='button';editButton.className='text-button';editButton.textContent='编辑';editButton.setAttribute('aria-label','编辑 '+entry.name);editButton.onclick=()=>edit(entry);
+   const remove=document.createElement('button');remove.type='button';remove.className='text-button';remove.textContent='删除';remove.setAttribute('aria-label','删除 '+entry.name);let confirming=false;
+   remove.onclick=async()=>{if(!confirming){confirming=true;remove.textContent='确认删除';return;}remove.disabled=true;try{const next=await window.pet.system({action:'generation-video-remove',id:entry.id});editor.replaceChildren();changed(next);status.textContent='视频 API 已删除，优先级已同步更新。';}catch(error){status.textContent=error.message;remove.disabled=false;confirming=false;remove.textContent='删除';}};
+   actions.append(editButton,remove);card.append(info,actions);list.append(card);
+  }
+ }
+ add.onclick=()=>edit(null);
+ async function load(){if(loading||loaded)return;loading=true;try{
+  config=await window.pet.system({action:'generation-api-config'});
+  const hostInfo=document.createElement('p');hostInfo.className='quiet';hostInfo.textContent='Codex ImageGen 已加入生图优先级，无需配置地址或密钥。由支持 ImageGen 的 Codex 会话调用，生成图片后导入项目；当前宿主不可用时自动跳过。';imageCard.append(hostInfo);
+  imageCard.append(createGenerationAPIForm({kind:'image',config:config.image,toast,onSaved:changed}));renderList();loaded=true;add.disabled=false;
+ }catch(error){status.textContent=error.message;toast(error.message);}finally{loading=false;}}
+ document.addEventListener('lingpet:navigate',event=>{if(event.detail==='app')void load();});if(document.body.dataset.page==='app')void load();
 }

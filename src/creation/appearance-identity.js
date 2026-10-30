@@ -20,6 +20,6 @@ export async function storedAppearanceFingerprint(root,manifest){
  return appearanceFingerprint(manifest,async file=>{const target=await realpath(path.resolve(base,file)),rel=path.relative(base,target);if(!rel||rel.startsWith('..')||path.isAbsolute(rel))throw new Error('资源路径越界');return readFile(target);});
 }
 export function resolveAppearanceAliases(pets,entries){
- for(const pet of pets||[]){const entry=entries.find(e=>e.aliases?.some(a=>a.id===pet.appearance&&a.character===pet.character));if(entry){pet.character=entry.character;pet.appearance=entry.id;}}
+ for(const pet of pets||[]){const entry=entries.find(e=>e.id===pet.appearance||e.aliases?.some(a=>a.id===pet.appearance&&a.character===pet.character));if(entry){pet.character=entry.character;pet.appearance=entry.id;}}
  return pets;
 }

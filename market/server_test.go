@@ -34,11 +34,11 @@ func fixturePack(t *testing.T, extra string) []byte {
 	if e := png.Encode(&pb, im); e != nil {
 		t.Fatal(e)
 	}
-	p := Pet{1, "test-pet", "测试桌宠", "1.0.0", "alice", "CC0", "测试作品", "0.4.0"}
+	p := Pet{FormatVersion: 1, ID: "test-pet", Name: "测试桌宠", Version: "1.0.0", Author: "alice", License: "CC0", Description: "测试作品", MinAppVersion: "0.4.0"}
 	m := Manifest{SchemaVersion: 1, TileSize: 16, Columns: 2, Variants: []string{"pixel", "original"}, Original: &Original{TileSize: 16, Directory: "original/"}, Clips: map[string]Clip{}}
 	files := map[string][]byte{"cover.png": pb.Bytes()}
 	for _, s := range states {
-		m.Clips[s] = Clip{"sprites/" + s + ".png", 2, []int{0, 1}, []int{80, 90}, s != "done" && s != "error", 0}
+		m.Clips[s] = Clip{File: "sprites/" + s + ".png", SourceFrames: 2, Frames: []int{0, 1}, Durations: []int{80, 90}, Loop: s != "done" && s != "error", LoopFrom: 0}
 		files["sprites/"+s+".png"] = pb.Bytes()
 		files["original/sprites/"+s+".png"] = pb.Bytes()
 	}
@@ -63,6 +63,10 @@ func fixturePack(t *testing.T, extra string) []byte {
 }
 
 type fakeGitHub struct{ bytes []byte }
+
+func (f *fakeGitHub) Download(_ context.Context, _ Asset, destination string) error {
+	return os.WriteFile(destination, f.bytes, 0600)
+}
 
 func (f *fakeGitHub) Resolve(_ context.Context, repo, tag, name string) (Asset, error) {
 	return Asset{RepoID: 42, ReleaseID: 10, AssetID: 20, Owner: "alice", Repo: "pet", Tag: tag, Name: name, URL: "https://github.com/alice/pet/releases/download/" + tag + "/" + name, Size: int64(len(f.bytes))}, nil
@@ -148,7 +152,7 @@ func loginAs(t *testing.T, c *http.Client, base, login string) {
 		t.Fatalf("login %d %s", status, b)
 	}
 }
-func TestReviewAndInstallLifecycle(t *testing.T) {
+func TestAutomaticPublishAndInstallLifecycle(t *testing.T) {
 	s, ts, c := fixtureServer(t)
 	status, b := call(t, c, ts.URL, "POST", "/api/submissions", map[string]string{"repository": "https://github.com/alice/pet.git", "tag": "v1.0.0", "assetName": "test.petpack"})
 	if status != 202 {
@@ -163,25 +167,8 @@ func TestReviewAndInstallLifecycle(t *testing.T) {
 	record := receipt.Record
 	s.validate(context.Background(), record)
 	s.store.get("records", record.ID, &record)
-	if record.Status != "pending" || record.SHA256 != "" || record.Preview != nil {
+	if record.Status != "approved" || len(record.SHA256) != 64 || record.Preview == nil {
 		t.Fatalf("validation: %+v", record)
-	}
-	status, _ = call(t, http.DefaultClient, ts.URL, "GET", "/api/versions/"+record.ID+"/install", nil)
-	if status != 404 {
-		t.Fatal("pending install was visible")
-	}
-	status, _ = call(t, c, ts.URL, "POST", "/api/admin/versions/"+record.ID+"/approve", map[string]string{"reason": ""})
-	if status != 403 {
-		t.Fatal("author approved own work")
-	}
-	status, _ = call(t, http.DefaultClient, ts.URL, "GET", "/api/versions/"+record.ID+"/preview/cover.png", nil)
-	if status != 404 {
-		t.Fatal("pending preview visible")
-	}
-	loginAs(t, c, ts.URL, "admin")
-	status, b = call(t, c, ts.URL, "POST", "/api/admin/versions/"+record.ID+"/approve", map[string]string{"reason": "通过"})
-	if status != 200 {
-		t.Fatalf("approve %d %s", status, b)
 	}
 	status, b = call(t, http.DefaultClient, ts.URL, "GET", "/api/versions/"+record.ID+"/install", nil)
 	if status != 200 {
@@ -200,6 +187,7 @@ func TestReviewAndInstallLifecycle(t *testing.T) {
 	if len(entries) != 0 {
 		t.Fatal("review package was retained")
 	}
+	loginAs(t, c, ts.URL, "admin")
 	status, _ = call(t, c, ts.URL, "POST", "/api/admin/versions/"+record.ID+"/unpublish", map[string]string{"reason": ""})
 	if status != 409 {
 		t.Fatal("unpublish reason required")
@@ -311,9 +299,6 @@ func TestCrossLanguageInstall(t *testing.T) {
 		t.Fatal(e)
 	}
 	s.validate(context.Background(), r)
-	if e = s.store.review(r.ID, "admin", "approve", ""); e != nil {
-		t.Fatal(e)
-	}
 	root := t.TempDir()
 	file := filepath.Join(root, "fixture.petpack")
 	os.WriteFile(file, s.github.(*fakeGitHub).bytes, 0600)
@@ -334,9 +319,6 @@ func TestBrowserAndDesktopUI(t *testing.T) {
 	r := Record{ID: newID(), Repository: "alice/pet", Tag: "v1.0.0", AssetName: "test.petpack", Submitter: "alice", Status: "queued", Reviews: []Review{}, Created: time.Now()}
 	s.store.put("records", r.ID, r)
 	s.validate(context.Background(), r)
-	if e := s.store.review(r.ID, "admin", "approve", ""); e != nil {
-		t.Fatal(e)
-	}
 	root := t.TempDir()
 	file := filepath.Join(root, "fixture.petpack")
 	os.WriteFile(file, s.github.(*fakeGitHub).bytes, 0600)

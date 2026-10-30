@@ -5,16 +5,34 @@
 ## 环境与项目
 
 1. 先调用 `board_pet_generation_settings {action:"inspect"}` 读取已保存的 API 配置、协议和优先级（不返回密钥）。使用 ComfyUI 或需要检查后处理时，再调用 `board_pet_environment {action:"inspect"}` 读取节点、模型与 Python 环境。
+   视频 API 位于 `apis.videoApis`。通过 `action:"save-video",values:{vendor,name,url,model,protocol,apiKey}` 添加，带 `serviceId` 时编辑；`vendor` 支持 seedance/minimax/grok/gemini。保存后自动加入优先级，`action:"remove-video",serviceId` 删除未被进行中任务使用的服务。生成时使用返回的服务 ID 作为 provider，或使用 auto；不要把厂家名当作新配置的 ID。具体协议和限制见 [生成服务与优先级](generation-services.md)。
 2. 使用 `action:"configure"` 保存 `url`、`models` 及可选 `python`。模型映射键为 `qwenModel/qwenClip/qwenVae/h3Model/h3Clip/h3Vae`，值必须来自检测结果，不猜文件名或自动替换模型。`python` 是插件所在机器安装了 Pillow、numpy、av 的可执行文件。无需后处理时不必配置 Python。
 3. Qwen-Image 2.1 的主文本编码器与 PE 提示词增强模型不同。不要将带 `pe_t2i` / `pe_i2i` 的提示词增强权重绑定为 `qwenClip`；按匹配的官方工作流选用编码器。
 4. 确认 ComfyUI `/interrupt` 支持 `prompt_id` 定向中断后，可配置 `targetedInterrupt:true`。默认只删除所属待执行任务，不冒险调用旧版全局中断；正在运行的任务会返回明确说明。绝不清空公共队列。
 5. `board_pet_project` 支持 `create/list/get/update/add_reference/select_base`。创建时记录 `name/brief/character/constraints`。更新和读取均传 `projectId`；参考图传插件机器绝对 `path` 或 `base64` 二选一，支持 PNG/JPEG，`purpose` 标明 identity/style/pose/base。返回可持久读取的 `assetId`（结果中字段 `id`）。
 
-用户配置位于桌宠数据目录的 `creation/config.json`，项目/任务/文件位于 `creation/`。不写进安装目录或 Skill；不附带模型，不自动启动或修改 ComfyUI。支持 HTTP(S) 无凭证地址；ComfyUI 本地连接目前无鉴权入口；云端生成服务的 Bearer 密钥通过应用设置或 `board_pet_generation_settings` 保存。
+用户实际配置位于桌宠数据目录的 `creation/config.json`，项目/任务/文件位于 `creation/`。连接信息、密钥及本机路径不写进安装目录或 Skill；下文仅记录推荐模型文件名，不附带模型，不自动启动或修改 ComfyUI。支持 HTTP(S) 无凭证地址；ComfyUI 本地连接目前无鉴权入口；云端生成服务的 Bearer 密钥通过应用设置或 `board_pet_generation_settings` 保存。
+
+## 推荐的 ComfyUI 模型配置
+
+以下组合来自用户已验证的本机配置，对应当前插件的 Qwen Image 2.1 生图／编辑工作流与 MiniMax H3 图生视频工作流，也与后端默认模型绑定一致。
+
+| 用途 | 配置键 | 推荐模型文件名 |
+| --- | --- | --- |
+| 生图主模型 | `qwenModel` | `qwen_image_2.1_int8_convrot.safetensors` |
+| 生图文本编码器 | `qwenClip` | `qwen3vl_8b_int8_convrot.safetensors` |
+| 生图 VAE | `qwenVae` | `qwen_image_2.1_vae_bf16.safetensors` |
+| 视频主模型 | `h3Model` | `minimax_h3_fl2va_pruned_int8_convrot.safetensors` |
+| 视频文本编码器 | `h3Clip` | `qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors` |
+| 视频 VAE | `h3Vae` | `minimax_h3_video_vae_fp16.safetensors` |
+
+先用 `board_pet_environment {action:"inspect"}` 读取当前配置、可选模型与缺失节点。用户已保存的模型选择（包括显式留空）优先，不因推荐表自动覆盖。需要初次绑定或用户要求采用推荐组合时，确认文件名出现在检测结果的对应 `choices` 中，再以 `action:"configure"` 保存；模型在子目录时使用检测返回的完整相对名称。缺少推荐文件或节点时说明缺项，不猜替代权重或自动下载模型。
+
+这些文件名适用于此组合，不能据此推断其他模型版本兼容；带 `pe_t2i` / `pe_i2i` 的权重是提示词增强模型，不能替代 `qwenClip`。Python 路径由实际后处理环境配置，不将用户本机绝对路径作为通用推荐。
 
 ## 图像与视频
 
-后端顺序以应用设置为准。默认调用 `board_pet_generate_image` 的 `provider:"auto"`；可显式指定 `api` 或 `comfyui`。API 使用 OpenAI Images 协议，`apiSize` 表示 API 尺寸；参考图走 images/edits。ComfyUI 的 sampler/steps/cfg/cache 等只用于 ComfyUI，不能当作 API 参数。完整规则见 [生成服务与优先级](generation-services.md)。
+后端顺序以应用设置为准。默认调用 `board_pet_generate_image` 的 `provider:"auto"`；可显式指定 `api`、`imagegen` 或 `comfyui`。本次宿主具备 ImageGen 时传 `hostTools:["imagegen"]`；选中后返回 `requires_host_tool` 交接请求，按返回信息调用宿主工具，再通过 add_reference 导入图片并审阅选定，不要当作后台任务轮询。API 使用 OpenAI Images 协议，`apiSize` 表示 API 尺寸；参考图走 images/edits。ComfyUI 的 sampler/steps/cfg/cache 等只用于 ComfyUI，不能当作 API 参数。完整规则见 [生成服务与优先级](generation-services.md)。
 
 `board_pet_generate_image` 必传 `projectId/prompt`；`referenceIds:[]` 为文生图，传图为参考创作/编辑。当前 Qwen 工作流版本为 2，默认 Euler/simple、25 steps、CFG 1；可指定 `sampler/scheduler`（须为环境实际支持的选项）、`steps/cfg/seed/negativePrompt`。
 

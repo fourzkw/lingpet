@@ -1,10 +1,17 @@
 @import url(./ui-theme.css);
 @import url(./workbench.css);
 @import url(./workbench-motion.css);
+@import url(./generation-services.css);
+@import url(./integrations.css);
 .onboarding{margin-bottom:24px}
 
 .market-pet-stats{display:flex;flex-wrap:wrap;gap:8px 18px;font-variant-numeric:tabular-nums}
+.market-download-progress{padding:12px 16px;margin:12px 0;border:1px solid var(--line);border-radius:var(--control-radius);background:var(--surface);font-variant-numeric:tabular-nums}
+.market-download-progress p{margin:0 0 8px}
+.market-download-progress progress{display:block;width:100%;height:14px;accent-color:var(--accent)}
 #integrationExecutableRow .quiet{display:block;margin-top:4px;line-height:1.6}
 #integrationAdvanced:not([open])>label{display:none}
 .integration-complete{width:min(560px,calc(100vw - 40px))}.integration-complete li{margin:14px 0;line-height:1.8}
 .storage-location{overflow-wrap:anywhere;padding:12px 16px;border:1px solid var(--line);border-radius:var(--control-radius);background:var(--surface);font-size:13px;line-height:1.7}
+
+.demo-section{display:flex;align-items:flex-start;gap:12px}.demo-section .demo-panel{flex:1;min-width:0;margin:0}.demo-section>#backLive{flex-shrink:0;margin-top:12px}.market-art-panel #marketDetailCover{display:block;width:100%;aspect-ratio:1;object-fit:contain}.market-art-panel #marketDetailCover[hidden]{display:none}@media(max-width:600px){.demo-section{flex-wrap:wrap}.demo-section .demo-panel{flex-basis:100%}.demo-section>#backLive{margin-top:0}}

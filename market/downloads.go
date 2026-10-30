@@ -77,7 +77,34 @@ func (s *Server) legacyDownloadManifest() (DownloadManifest, error) {
 	}
 	return result, nil
 }
+
+const desktopReleaseURL = "https://github.com/fourzkw/lingpet/releases/latest"
+
 func (s *Server) listDownloads(w http.ResponseWriter, r *http.Request) {
+	respond(w, 200, map[string]any{"provider": "github", "releaseURL": desktopReleaseURL, "downloads": []map[string]any{{"id": "desktop", "name": "灵伴桌面版", "url": "/downloads/desktop"}}})
+}
+
+func (s *Server) serveDownload(w http.ResponseWriter, r *http.Request) {
+	if r.PathValue("id") != "desktop" {
+		failure(w, http.StatusGone, errors.New("独立插件安装包已停止提供，请安装灵伴桌面版"))
+		return
+	}
+	if r.Method == "GET" {
+		_ = s.store.metric("download.desktop", 0)
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	http.Redirect(w, r, desktopReleaseURL, http.StatusFound)
+}
+
+func (s *Server) retiredInstallerManagement(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireAdmin(w, r); !ok {
+		return
+	}
+	respond(w, http.StatusGone, map[string]string{"error": "安装包现由 GitHub Release 发布，请前往仓库管理版本", "releaseURL": desktopReleaseURL})
+}
+
+// Retained for legacy data regression coverage, not exposed by production routes.
+func (s *Server) listLegacyDownloads(w http.ResponseWriter, r *http.Request) {
 	manifest, e := s.downloadManifest()
 	if e != nil {
 		failure(w, 503, errors.New("插件下载清单暂不可用"))
@@ -85,7 +112,7 @@ func (s *Server) listDownloads(w http.ResponseWriter, r *http.Request) {
 	}
 	respond(w, 200, manifest)
 }
-func (s *Server) serveDownload(w http.ResponseWriter, r *http.Request) {
+func (s *Server) serveLegacyDownload(w http.ResponseWriter, r *http.Request) {
 	manifest, e := s.downloadManifest()
 	if e != nil {
 		http.NotFound(w, r)

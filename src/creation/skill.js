@@ -2,8 +2,7 @@ import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
-export function registerCreationSkill(ctx){
-  const file=fileURLToPath(new URL('../../skills/board-pet-creator/SKILL.md',import.meta.url));
+export function registerCreationSkill(ctx,{file=fileURLToPath(new URL('../../skills/board-pet-creator/SKILL.md',import.meta.url))}={}){
   async function load(signal){
     const raw=await readFile(file,{encoding:'utf8',signal}),match=raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
     if(!match)throw new Error('桌宠创作 Skill 元数据缺失');

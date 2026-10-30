@@ -20,10 +20,13 @@ import (
 )
 
 type Config struct {
+	SyncInterval                                                                     time.Duration
 	Addr, PublicURL, DataDir, GitHubToken, AdminUser, AdminPasswordHash, DownloadDir string
 	Dev                                                                              bool
 }
 type Server struct {
+	queueMu      sync.RWMutex
+	activeCheck  string
 	statsMu      sync.Mutex
 	statsLoading map[string]bool
 	releaseMu    sync.Mutex
@@ -113,9 +116,9 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /downloads/{id}", s.serveDownload)
 	mux.HandleFunc("GET /api/admin/stats", s.adminStats)
 	mux.HandleFunc("GET /api/admin/stats.csv", s.adminStatsCSV)
-	mux.HandleFunc("GET /api/admin/releases", s.adminReleases)
-	mux.HandleFunc("POST /api/admin/releases/upload", s.uploadRelease)
-	mux.HandleFunc("POST /api/admin/releases/{id}/{action}", s.manageRelease)
+	mux.HandleFunc("GET /api/admin/releases", s.retiredInstallerManagement)
+	mux.HandleFunc("POST /api/admin/releases/upload", s.retiredInstallerManagement)
+	mux.HandleFunc("POST /api/admin/releases/{id}/{action}", s.retiredInstallerManagement)
 	mux.HandleFunc("GET /api/admin/audit", s.adminAudit)
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		respond(w, 200, map[string]any{"ok": true, "service": "lingpet-market", "version": strings.TrimSpace(marketVersion), "formatVersion": 1})
@@ -155,22 +158,40 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("POST /api/submissions", s.submit)
 	mux.HandleFunc("POST /api/submissions/lookup", s.lookupSubmission)
 	mux.HandleFunc("GET /api/pets", func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		if err := validateBrowse(query); err != nil {
+			failure(w, 400, err)
+			return
+		}
+		all, e := s.store.records()
+		if e != nil {
+			failure(w, 500, e)
+			return
+		}
+		out := filterPets(all, query, time.Now().UTC())
+		s.populatePetStats(r.Context(), out)
+		sortPets(out, query.Get("sort"))
+		if len(out) > 200 {
+			out = out[:200]
+		}
+		respond(w, 200, out)
+	})
+	mux.HandleFunc("GET /api/versions/{id}/history", func(w http.ResponseWriter, r *http.Request) {
+		a, ok := s.visible(w, r)
+		if !ok {
+			return
+		}
 		all, e := s.store.records()
 		if e != nil {
 			failure(w, 500, e)
 			return
 		}
 		out := []Record{}
-		q := strings.ToLower(r.URL.Query().Get("q"))
-		for _, a := range all {
-			if a.Status == "approved" && (q == "" || strings.Contains(strings.ToLower(a.Pet.Name+" "+a.Pet.Description+" "+a.Pet.Author), q)) {
-				out = append(out, a)
+		for _, entry := range all {
+			if entry.Status == "approved" && entry.Pet != nil && petIdentity(entry) == petIdentity(a) {
+				out = append(out, marketPresentation(entry))
 			}
 		}
-		if len(out) > 200 {
-			out = out[:200]
-		}
-		s.populatePetStats(r.Context(), out)
 		respond(w, 200, out)
 	})
 	mux.HandleFunc("GET /api/versions/{id}", func(w http.ResponseWriter, r *http.Request) {
@@ -190,6 +211,7 @@ func (s *Server) routes() http.Handler {
 			http.NotFound(w, r)
 			return
 		}
+		a = marketPresentation(a)
 		respond(w, 200, map[string]any{"id": a.ID, "pet": a.Pet, "source": a.Source, "sha256": a.SHA256, "size": a.Size, "url": a.Source.URL})
 	})
 	mux.HandleFunc("GET /api/versions/{id}/preview/{file...}", func(w http.ResponseWriter, r *http.Request) {
@@ -217,6 +239,7 @@ func (s *Server) routes() http.Handler {
 		}
 		respond(w, 200, all)
 	})
+	mux.HandleFunc("GET /api/admin/queue", s.adminQueue)
 	mux.HandleFunc("POST /api/admin/versions/{id}/{action}", func(w http.ResponseWriter, r *http.Request) {
 		u, ok := s.requireAdmin(w, r)
 		if !ok {
@@ -226,7 +249,7 @@ func (s *Server) routes() http.Handler {
 			Reason string `json:"reason"`
 		}
 		if e := s.input(w, r, &b); e != nil || len(b.Reason) > 2000 {
-			failure(w, 400, errors.New("无效审核原因"))
+			failure(w, 400, errors.New("无效管理原因"))
 			return
 		}
 		if e := s.store.review(r.PathValue("id"), u.Login, r.PathValue("action"), b.Reason); e != nil {
@@ -263,7 +286,7 @@ func (s *Server) visible(w http.ResponseWriter, r *http.Request) (Record, bool) 
 			return a, false
 		}
 	}
-	return a, true
+	return marketPresentation(a), true
 }
 func (s *Server) requireAdmin(w http.ResponseWriter, r *http.Request) (Session, bool) {
 	u, e := s.session(r)
@@ -291,13 +314,43 @@ func (s *Server) submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	repo, e := parseRepository(b.Repository)
-	if e != nil || !field(b.Tag, 100) || !field(b.AssetName, 120) || !strings.HasSuffix(b.AssetName, ".petpack") {
+	if e != nil {
+		failure(w, 400, e)
+		return
+	}
+	repositoryOnly := b.Tag == "" && b.AssetName == ""
+	if !repositoryOnly && (!field(b.Tag, 100) || !field(b.AssetName, 120) || !strings.HasSuffix(b.AssetName, ".petpack")) {
 		failure(w, 400, errors.New("请填写有效仓库、标签和 .petpack 附件名"))
 		return
 	}
 	if !s.allowRate("submission:"+clientIP(r), 10, time.Hour) {
 		failure(w, 429, errors.New("投稿过于频繁，请稍后重试"))
 		return
+	}
+	if repositoryOnly {
+		if discoverer, ok := s.github.(interface {
+			Discover(context.Context, string) ([]RepositoryPet, error)
+		}); ok {
+			ctx, cancel := context.WithTimeout(r.Context(), 45*time.Second)
+			works, err := discoverer.Discover(ctx, repo)
+			cancel()
+			if err != nil {
+				failure(w, 400, err)
+				return
+			}
+			if works != nil {
+				s.submitRepository(w, r, repo, works)
+				return
+			}
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
+		defer cancel()
+		source, err := s.github.Resolve(ctx, repo, "", "")
+		if err != nil {
+			failure(w, 400, err)
+			return
+		}
+		b.Tag, b.AssetName = source.Tag, source.Name
 	}
 	salt, e := s.store.submissionSalt()
 	if e != nil {
@@ -312,7 +365,11 @@ func (s *Server) submit(w http.ResponseWriter, r *http.Request) {
 	}
 	pending, total := 0, 0
 	for _, a := range all {
-		if a.Repository == repo && a.Tag == b.Tag && a.AssetName == b.AssetName && a.Status != "failed" {
+		if strings.EqualFold(a.Repository, repo) && a.Tag == b.Tag && a.AssetName == b.AssetName && a.Status != "failed" {
+			if repositoryOnly {
+				respond(w, 200, map[string]any{"id": a.ID, "record": submissionStatus(a), "existing": true})
+				return
+			}
 			failure(w, 409, errors.New("该附件已经提交"))
 			return
 		}
@@ -338,11 +395,32 @@ func (s *Server) submit(w http.ResponseWriter, r *http.Request) {
 }
 func (s *Server) lookupSubmission(w http.ResponseWriter, r *http.Request) {
 	var b struct {
-		ID    string
-		Token string
+		Repository string
+		ID         string
+		Token      string
 	}
 	if e := s.input(w, r, &b); e != nil {
 		failure(w, 400, e)
+		return
+	}
+	if b.Repository != "" {
+		repo, e := parseRepository(b.Repository)
+		if e != nil {
+			failure(w, 400, e)
+			return
+		}
+		all, e := s.store.records()
+		if e != nil {
+			failure(w, 500, e)
+			return
+		}
+		rows := []any{}
+		for _, a := range all {
+			if strings.EqualFold(a.Repository, repo) {
+				rows = append(rows, submissionStatus(a))
+			}
+		}
+		respond(w, 200, map[string]any{"repository": repo, "records": rows})
 		return
 	}
 	var secret SubmissionSecret
@@ -353,12 +431,27 @@ func (s *Server) lookupSubmission(w http.ResponseWriter, r *http.Request) {
 	}
 	respond(w, 200, a)
 }
+
+// Repository lookups are public status summaries, never private records or previews.
+func submissionStatus(a Record) map[string]any {
+	result := map[string]any{"id": a.ID, "repository": a.Repository, "tag": a.Tag, "assetName": a.AssetName, "status": a.Status, "createdAt": a.Created, "updatedAt": a.Updated}
+	if a.Error != "" {
+		result["error"] = a.Error
+	}
+	if a.Pet != nil {
+		result["pet"] = map[string]string{"name": a.Pet.Name, "version": a.Pet.Version}
+	}
+	if len(a.Reviews) > 0 {
+		result["reason"] = a.Reviews[len(a.Reviews)-1].Reason
+	}
+	return result
+}
 func (s *Server) worker(ctx context.Context) {
 	_ = s.store.cleanExpired()
 	lastCleanup := time.Now()
 	all, _ := s.store.records()
 	for _, a := range all {
-		if a.Status == "validating" {
+		if a.Status == "validating" || a.Status == "pending" {
 			a.Status = "queued"
 			s.store.put("records", a.ID, a)
 		}
@@ -379,12 +472,19 @@ func (s *Server) worker(ctx context.Context) {
 				log.Print(e)
 				continue
 			}
-			for _, a := range all {
+			processed := false
+			for i := len(all) - 1; i >= 0; i-- {
+				a := all[i]
 				if a.Status == "queued" {
 					s.validate(ctx, a)
+					processed = true
 					break
 				}
 			}
+			if !processed && s.cfg.SyncInterval > 0 {
+				s.checkNextSource(ctx, all, time.Now().UTC())
+			}
+			ticker.Reset(10 * time.Second)
 		}
 	}
 }
@@ -404,21 +504,50 @@ func (s *Server) validate(ctx context.Context, a Record) {
 			a.Error = ""
 		}
 	} else {
-		a.Status = "pending"
+		a.Status = "approved"
+		a.Error = ""
+		a.Reviews = append(a.Reviews, Review{Actor: "system", Action: "auto-publish", Reason: "资料自动校验通过，已上架", At: time.Now().UTC()})
 	}
 	a.Updated = time.Now().UTC()
 	if e = s.store.put("records", a.ID, a); e != nil {
 		log.Print(e)
+	} else if a.Status == "approved" {
+		if err := s.store.audit("system", "pet.auto-publish", a.ID, "资料自动校验通过，已上架"); err != nil {
+			log.Print(err)
+		}
 	}
 }
 func (s *Server) validateInner(ctx context.Context, a *Record) error {
+	if a.Work != nil {
+		if e := a.Work.validate(); e != nil {
+			return e
+		}
+	}
 	source, e := s.github.Resolve(ctx, a.Repository, a.Tag, a.AssetName)
 	if e != nil {
 		return e
 	}
-	pet, cover, e := s.github.Presentation(ctx, a.Repository, a.Tag)
+	var pet Pet
+	var cover []byte
+	if a.Work != nil {
+		reader, ok := s.github.(interface {
+			PresentationAt(context.Context, string, string, string) (Pet, []byte, error)
+		})
+		if !ok {
+			return errors.New("当前仓库读取器不支持多作品目录")
+		}
+		pet, cover, e = reader.PresentationAt(ctx, a.Repository, a.Tag, a.Work.Path)
+	} else {
+		pet, cover, e = s.github.Presentation(ctx, a.Repository, a.Tag)
+	}
 	if e != nil {
 		return e
+	}
+	if !validCharacter(pet.Character) {
+		return errors.New("仓库 pet.json 的角色信息无效")
+	}
+	if strings.TrimSpace(pet.Author) == "" {
+		pet.Author = repositoryOwner(Record{Repository: a.Repository, Source: &source})
 	}
 	if pet.FormatVersion != 1 || !packageID.MatchString(pet.ID) || !semver.MatchString(pet.Version) || len(pet.Version) > 32 || (pet.MinAppVersion != "0.4.0" && pet.MinAppVersion != "0.4.9" && pet.MinAppVersion != "0.5.0") || !field(pet.Name, 40) || !field(pet.Author, 100) || !field(pet.License, 200) || len([]rune(pet.Description)) > 2000 {
 		return errors.New("仓库 pet.json 的作品信息无效")
@@ -427,6 +556,41 @@ func (s *Server) validateInner(ctx context.Context, a *Record) error {
 	if e != nil {
 		return e
 	}
+	if a.Work != nil && (pet.ID != a.Work.ID || pet.Version != a.Work.Version) {
+		return errors.New("作品资料与索引中的 ID 或版本不符")
+	}
+	tmpRoot := filepath.Join(s.cfg.DataDir, "tmp")
+	if e = os.MkdirAll(tmpRoot, 0700); e != nil {
+		return e
+	}
+	tmp, e := os.MkdirTemp(tmpRoot, "validate-")
+	if e != nil {
+		return e
+	}
+	defer os.RemoveAll(tmp)
+	packageFile := filepath.Join(tmp, "download.petpack")
+	if e = s.github.Download(ctx, source, packageFile); e != nil {
+		return e
+	}
+	pack, e := parsePack(packageFile)
+	if e != nil {
+		return e
+	}
+	if pack.Size != source.Size {
+		return errors.New("资源包大小与 Release 信息不符")
+	}
+	roleID := func(p *Character) string {
+		if p == nil {
+			return ""
+		}
+		return p.ID
+	}
+	if pack.Pet.ID != pet.ID || pack.Pet.Version != pet.Version || roleID(pack.Pet.Character) != roleID(pet.Character) {
+		return errors.New("包内作品 ID、版本或角色归属与仓库资料不符")
+	}
+	// Repository fields describe the market listing; technical compatibility comes from the package.
+	pet.FormatVersion = pack.Pet.FormatVersion
+	pet.MinAppVersion = pack.Pet.MinAppVersion
 	all, e := s.store.records()
 	if e != nil {
 		return e
@@ -440,19 +604,29 @@ func (s *Server) validateInner(ctx context.Context, a *Record) error {
 	if e = os.MkdirAll(dest, 0700); e != nil {
 		return e
 	}
-	// Only a re-encoded local cover is served; repository changes cannot alter approved display data.
-	coverFile := filepath.Join(dest, "cover.png")
-	if e = os.Remove(coverFile); e != nil && !os.IsNotExist(e) {
+	previewDir := filepath.Join(tmp, "preview")
+	preview, e := previewPack(pack, previewDir)
+	if e != nil {
 		return e
 	}
-	if e = writePNG(coverFile, image); e != nil {
+	// Use the independently authored repository cover for the market snapshot.
+	if e = os.Remove(filepath.Join(previewDir, "cover.png")); e != nil {
+		return e
+	}
+	if e = writePNG(filepath.Join(previewDir, "cover.png"), image); e != nil {
+		return e
+	}
+	if e = os.RemoveAll(dest); e != nil {
+		return e
+	}
+	if e = os.Rename(previewDir, dest); e != nil {
 		return e
 	}
 	a.Source = &source
 	a.Pet = &pet
-	a.SHA256 = ""
+	a.SHA256 = pack.Hash
 	a.Size = source.Size
-	a.Preview = nil
+	a.Preview = preview
 	return nil
 }
 func validPublicURL(raw string, dev bool) error {

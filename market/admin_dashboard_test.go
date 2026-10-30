@@ -94,7 +94,7 @@ func uploadFixture(t *testing.T, c *http.Client, base, host, version string, dat
 	return res.StatusCode, result
 }
 func TestAdminReleaseLifecycleAndStatistics(t *testing.T) {
-	s, ts, c := fixtureServer(t)
+	s, ts, c := fixtureLegacyDownloadServer(t)
 	for _, route := range []string{"/api/admin/stats", "/api/admin/stats.csv", "/api/admin/releases", "/api/admin/audit"} {
 		status, _ := call(t, c, ts.URL, "GET", route, nil)
 		if status != 403 {
@@ -212,7 +212,7 @@ func TestAdminReleaseLifecycleAndStatistics(t *testing.T) {
 	}
 }
 func TestInstallerValidationAndLegacyImport(t *testing.T) {
-	s, ts, c := fixtureServer(t)
+	s, ts, c := fixtureLegacyDownloadServer(t)
 	loginAs(t, c, ts.URL, "admin")
 	for _, host := range []string{"dsh", "cursor", "codex"} {
 		good := fixtureInstaller(t, host, "2.0.0", nil)

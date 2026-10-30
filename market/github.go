@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"net/url"
@@ -79,7 +80,11 @@ func publicClient() *http.Client {
 type GitHub interface {
 	Resolve(context.Context, string, string, string) (Asset, error)
 	Presentation(context.Context, string, string) (Pet, []byte, error)
+	Download(context.Context, Asset, string) error
 }
+
+var errSourceUnavailable = errors.New("仓库、正式 Release 或附件已不可用")
+
 type githubClient struct {
 	client *http.Client
 	token  string
@@ -95,7 +100,7 @@ func (g *githubClient) Resolve(ctx context.Context, repo, tag, name string) (Ass
 		return Asset{}, e
 	}
 	if repository.Private {
-		return Asset{}, errors.New("仅支持公开仓库")
+		return Asset{}, fmt.Errorf("仅支持公开仓库: %w", errSourceUnavailable)
 	}
 	var release struct {
 		ID                           int64
@@ -108,11 +113,31 @@ func (g *githubClient) Resolve(ctx context.Context, repo, tag, name string) (Ass
 			URL         string `json:"browser_download_url"`
 		}
 	}
-	if e := g.get(ctx, "/repos/"+repo+"/releases/tags/"+url.PathEscape(tag), &release); e != nil {
+	releasePath := "/repos/" + repo + "/releases/latest"
+	if tag != "" {
+		releasePath = "/repos/" + repo + "/releases/tags/" + url.PathEscape(tag)
+	}
+	if e := g.get(ctx, releasePath, &release); e != nil {
+		if tag == "" {
+			return Asset{}, errors.New("无法读取最新正式 Release，请确认公开仓库已发布正式版本：" + e.Error())
+		}
 		return Asset{}, e
 	}
 	if release.Draft || release.Prerelease {
-		return Asset{}, errors.New("请提交正式公开 Release")
+		return Asset{}, fmt.Errorf("请提交正式公开 Release: %w", errSourceUnavailable)
+	}
+	if name == "" {
+		for _, a := range release.Assets {
+			if strings.HasSuffix(a.Name, ".petpack") && a.State == "uploaded" {
+				if name != "" {
+					return Asset{}, errors.New("最新正式 Release 包含多个 .petpack，请仅保留一个作品分享包")
+				}
+				name = a.Name
+			}
+		}
+		if name == "" {
+			return Asset{}, errors.New("最新正式 Release 中没有 .petpack 分享包")
+		}
 	}
 	parts := strings.Split(repo, "/")
 	for _, a := range release.Assets {
@@ -123,5 +148,5 @@ func (g *githubClient) Resolve(ctx context.Context, repo, tag, name string) (Ass
 			return Asset{repository.ID, release.ID, a.ID, parts[0], parts[1], release.Tag, a.Name, a.URL, a.Size, release.Immutable}, nil
 		}
 	}
-	return Asset{}, errors.New("Release 中未找到指定附件")
+	return Asset{}, fmt.Errorf("Release 中未找到指定附件: %w", errSourceUnavailable)
 }

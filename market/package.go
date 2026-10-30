@@ -25,8 +25,16 @@ const maxPixels = 16 * 1024 * 1024
 
 var states = []string{"idle", "thinking", "working", "input", "approval", "done", "error", "sleep"}
 var packageID = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{2,63}$`)
+var characterID = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{2,99}$`)
+
+func validCharacter(c *Character) bool {
+	return c == nil || (characterID.MatchString(c.ID) && field(c.Name, 40) && len(utf16.Encode([]rune(c.Description))) <= 2000)
+}
+
 var semver = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
-var packageFile = regexp.MustCompile(`^(pet\.json|manifest\.json|cover\.png|(?:original/)?sprites/(?:idle|thinking|working|input|approval|done|error|sleep|click|pet)\.png)$`)
+var packageFile = regexp.MustCompile(`^(pet\.json|manifest\.json|cover\.png|(?:original/)?sprites/(?:idle|thinking|working|input|approval|done|error|sleep|click|pet)(?:-[1-7])?\.png)$`)
+
+func clipCandidates(c Clip) []Clip { return append([]Clip{c}, c.Alternatives...) }
 
 type Pack struct {
 	Pet      Pet
@@ -50,7 +58,7 @@ func parsePack(file string) (*Pack, error) {
 	if e != nil {
 		return nil, e
 	}
-	if len(reader.File) > 40 {
+	if len(reader.File) > 163 {
 		return nil, errors.New("资源包文件过多")
 	}
 	p := &Pack{Files: map[string][]byte{}, Hash: hex.EncodeToString(digest[:]), Size: int64(len(raw))}
@@ -66,7 +74,11 @@ func parsePack(file string) (*Pack, error) {
 		if total > maxExpanded {
 			return nil, errors.New("解压体积超限")
 		}
-		if filepath.Ext(f.Name) == ".json" && f.UncompressedSize64 > 65536 {
+		jsonLimit := uint64(65536)
+		if f.Name == "manifest.json" {
+			jsonLimit = 512 << 10
+		}
+		if filepath.Ext(f.Name) == ".json" && f.UncompressedSize64 > jsonLimit {
 			return nil, errors.New("JSON 过大")
 		}
 		r, e := f.Open()
@@ -84,11 +96,17 @@ func parsePack(file string) (*Pack, error) {
 		return nil, e
 	}
 	m := p.Pet
+	if !validCharacter(m.Character) {
+		return nil, errors.New("无效的角色信息")
+	}
 	if m.FormatVersion != 1 || !packageID.MatchString(m.ID) || (!semver.MatchString(m.Version) || len(m.Version) > 32) || (m.MinAppVersion != "0.4.0" && m.MinAppVersion != "0.4.9" && m.MinAppVersion != "0.5.0") || !field(m.Name, 40) || !field(m.Author, 100) || !field(m.License, 200) || len(utf16.Encode([]rune(m.Description))) > 2000 {
 		return nil, errors.New("无效作品信息或格式版本")
 	}
 	if e = json.Unmarshal(p.Files["manifest.json"], &p.Manifest); e != nil {
 		return nil, e
+	}
+	if m.Character != nil && p.Manifest.Character != m.Character.ID {
+		return nil, errors.New("角色信息与动作清单不符")
 	}
 	var manifestRaw struct {
 		Clips map[string]map[string]json.RawMessage
@@ -97,8 +115,18 @@ func parsePack(file string) (*Pack, error) {
 		return nil, e
 	}
 	for state := range p.Manifest.Clips {
-		if value, ok := manifestRaw.Clips[state]["loop"]; !ok || (string(bytes.TrimSpace(value)) != "true" && string(bytes.TrimSpace(value)) != "false") {
-			return nil, errors.New("缺少 loop 字段")
+		candidates := []map[string]json.RawMessage{manifestRaw.Clips[state]}
+		if raw := manifestRaw.Clips[state]["alternatives"]; raw != nil {
+			var alternatives []map[string]json.RawMessage
+			if e = json.Unmarshal(raw, &alternatives); e != nil {
+				return nil, e
+			}
+			candidates = append(candidates, alternatives...)
+		}
+		for _, candidate := range candidates {
+			if value, ok := candidate["loop"]; !ok || (string(bytes.TrimSpace(value)) != "true" && string(bytes.TrimSpace(value)) != "false") {
+				return nil, errors.New("缺少 loop 字段")
+			}
 		}
 	}
 	if e = validateManifest(p.Manifest); e != nil {
@@ -109,21 +137,22 @@ func parsePack(file string) (*Pack, error) {
 		return nil, e
 	}
 	for state := range p.Manifest.Clips {
-		c := p.Manifest.Clips[state]
-		for _, v := range p.Manifest.Variants {
-			tile := p.Manifest.TileSize
-			name := c.File
-			if v == "original" {
-				tile = p.Manifest.Original.TileSize
-				name = "original/" + name
-			}
-			expected[name] = true
-			im, e := decodePNG(p.Files[name], false)
-			if e != nil {
-				return nil, fmt.Errorf("%s: %w", name, e)
-			}
-			if im.Bounds().Dx() != p.Manifest.Columns*tile || im.Bounds().Dy() != ((c.SourceFrames+p.Manifest.Columns-1)/p.Manifest.Columns)*tile {
-				return nil, errors.New("图集尺寸与清单不符")
+		for _, c := range clipCandidates(p.Manifest.Clips[state]) {
+			for _, v := range p.Manifest.Variants {
+				tile := p.Manifest.TileSize
+				name := c.File
+				if v == "original" {
+					tile = p.Manifest.Original.TileSize
+					name = "original/" + name
+				}
+				expected[name] = true
+				im, e := decodePNG(p.Files[name], false)
+				if e != nil {
+					return nil, fmt.Errorf("%s: %w", name, e)
+				}
+				if im.Bounds().Dx() != p.Manifest.Columns*tile || im.Bounds().Dy() != ((c.SourceFrames+p.Manifest.Columns-1)/p.Manifest.Columns)*tile {
+					return nil, errors.New("图集尺寸与清单不符")
+				}
 			}
 		}
 	}
@@ -161,25 +190,44 @@ func validateManifest(m Manifest) error {
 				known = true
 			}
 		}
-		if !known || ((s == "click" || s == "pet") && m.Clips[s].Loop) {
+		if !known {
 			return errors.New("无效互动动作")
 		}
-		c, ok := m.Clips[s]
-		if !ok || c.File != "sprites/"+s+".png" || c.SourceFrames < 1 || c.SourceFrames > 128 || len(c.Frames) < 1 || len(c.Frames) > 256 || len(c.Frames) != len(c.Durations) || c.LoopFrom < 0 || c.LoopFrom >= len(c.Frames) {
-			return errors.New("动作不完整或时序错误")
+		group := m.Clips[s]
+		if len(group.Alternatives) > 7 || (group.Selection != "" && group.Selection != "random" && group.Selection != "round-robin") {
+			return errors.New("无效候选动作")
 		}
-		for i, f := range c.Frames {
-			if f < 0 || f >= c.SourceFrames || c.Durations[i] < 1 || c.Durations[i] > 10000 {
-				return errors.New("动作帧或时长无效")
+		for index, c := range clipCandidates(group) {
+			if c.Loop != group.Loop {
+				return errors.New("候选动作循环方式不一致")
 			}
-		}
-		for _, v := range m.Variants {
-			tile := m.TileSize
-			if v == "original" {
-				tile = m.Original.TileSize
+			file := "sprites/" + s
+			if index > 0 {
+				file += fmt.Sprintf("-%d", index)
 			}
-			if tile < 16 || tile > 512 || m.Columns*tile*((c.SourceFrames+m.Columns-1)/m.Columns)*tile > maxPixels {
-				return errors.New("图集像素超限")
+			file += ".png"
+			if index > 0 && (len(c.Alternatives) > 0 || c.Selection != "") {
+				return errors.New("不允许嵌套候选动作")
+			}
+			if (s == "click" || s == "pet") && c.Loop {
+				return errors.New("互动动作需单次播放")
+			}
+			if c.File != file || c.SourceFrames < 1 || c.SourceFrames > 128 || len(c.Frames) < 1 || len(c.Frames) > 256 || len(c.Frames) != len(c.Durations) || c.LoopFrom < 0 || c.LoopFrom >= len(c.Frames) {
+				return errors.New("动作不完整或时序错误")
+			}
+			for i, f := range c.Frames {
+				if f < 0 || f >= c.SourceFrames || c.Durations[i] < 1 || c.Durations[i] > 10000 {
+					return errors.New("动作帧或时长无效")
+				}
+			}
+			for _, v := range m.Variants {
+				tile := m.TileSize
+				if v == "original" {
+					tile = m.Original.TileSize
+				}
+				if tile < 16 || tile > 512 || m.Columns*tile*((c.SourceFrames+m.Columns-1)/m.Columns)*tile > maxPixels {
+					return errors.New("图集像素超限")
+				}
 			}
 		}
 	}
@@ -221,30 +269,31 @@ func previewPack(p *Pack, directory string) (*Manifest, error) {
 		return nil, e
 	}
 	for state := range p.Manifest.Clips {
-		c := p.Manifest.Clips[state]
-		for _, v := range p.Manifest.Variants {
-			tile := p.Manifest.TileSize
-			name := c.File
-			if v == "original" {
-				tile = p.Manifest.Original.TileSize
-				name = "original/" + name
-			}
-			src, e := decodePNG(p.Files[name], false)
-			if e != nil {
-				return nil, e
-			}
-			dst := image.NewNRGBA(image.Rect(0, 0, m.Columns*96, ((c.SourceFrames+m.Columns-1)/m.Columns)*96))
-			for f := 0; f < c.SourceFrames; f++ {
-				sx, sy := f%p.Manifest.Columns*tile, f/p.Manifest.Columns*tile
-				dx, dy := f%m.Columns*96, f/m.Columns*96
-				for y := 0; y < 96; y++ {
-					for x := 0; x < 96; x++ {
-						dst.Set(dx+x, dy+y, src.At(sx+x*tile/96, sy+y*tile/96))
+		for _, c := range clipCandidates(p.Manifest.Clips[state]) {
+			for _, v := range p.Manifest.Variants {
+				tile := p.Manifest.TileSize
+				name := c.File
+				if v == "original" {
+					tile = p.Manifest.Original.TileSize
+					name = "original/" + name
+				}
+				src, e := decodePNG(p.Files[name], false)
+				if e != nil {
+					return nil, e
+				}
+				dst := image.NewNRGBA(image.Rect(0, 0, m.Columns*96, ((c.SourceFrames+m.Columns-1)/m.Columns)*96))
+				for f := 0; f < c.SourceFrames; f++ {
+					sx, sy := f%p.Manifest.Columns*tile, f/p.Manifest.Columns*tile
+					dx, dy := f%m.Columns*96, f/m.Columns*96
+					for y := 0; y < 96; y++ {
+						for x := 0; x < 96; x++ {
+							dst.Set(dx+x, dy+y, src.At(sx+x*tile/96, sy+y*tile/96))
+						}
 					}
 				}
-			}
-			if e = writePNG(filepath.Join(directory, filepath.FromSlash(name)), dst); e != nil {
-				return nil, e
+				if e = writePNG(filepath.Join(directory, filepath.FromSlash(name)), dst); e != nil {
+					return nil, e
+				}
 			}
 		}
 	}

@@ -23,14 +23,14 @@ import {liveContents,isWindowSender,loadPaintedWindow,showLoadedWindow} from '..
 import {petMenuTemplate} from '../desktop/pet-menu.js';
 import {quickControlsModel} from '../desktop/quick-controls-model.js';
 import {PET_SCALES,visibilityPatch} from './pet-display.js';
-import {appearanceInfo,setCustomAppearances,configureBundledAssets} from './characters.js';
+import {appearanceInfo,setCustomAppearances,configureBundledAssets,CHARACTERS} from './characters.js';
 import {availableBuiltinAssets,retainExternalAppearances} from './bundled-appearances.js';
 import {loadCustomAppearances,publicAppearances,appearanceSheet} from './creation/catalog.js';
 
 import {CreationService} from './creation/service.js';
 import {CreationStore} from './creation/store.js';
 import {MarketService} from './market/service.js';
-import {loginStartupOptions} from './login-startup.js';
+import {configureLoginStartup} from './login-startup.js';
 import {diagnosticReport} from './diagnostics.js';
 import {installPetpack} from './market/package.js';
 import {SettingsStore} from './settings-store.js';
@@ -64,7 +64,7 @@ export async function launchDesktop(dir){
   if(settingsStore.recovery)recordError('配置恢复',settingsStore.recovery.source==='backup'?'配置损坏或丢失，已从最近有效备份恢复':'配置与备份不可用，已保留损坏文件并使用默认配置');
   async function updateProgress(phase,message,version=release.version){updateStatus={phase,message,version,time:Date.now()};await writeFile(updateFile,JSON.stringify(updateStatus));liveContents(settingsWindow)?.send('pet:system-update',updateStatus);}
   try{updateStatus=JSON.parse(await readFile(updateFile,'utf8'));if(updateStatus.phase==='restarting')await updateProgress(updateStatus.version===release.version?'ready':'error',updateStatus.version===release.version?'更新已完成':'新版启动未完成，已恢复当前版本，可重新选择更新包');else if(['validating','installing'].includes(updateStatus.phase))await updateProgress('error','上次更新未完成，当前版本仍可使用，可重新选择更新包');}catch{}
-  function configureLogin(enabled){const options=loginStartupOptions({enabled,executable:desktop?path.join(installRoot,'LingPet.exe'):app.getPath('exe'),root:contentRoot,packaged:desktop||app.isPackaged});app.setLoginItemSettings(options);return app.getLoginItemSettings({path:options.path,args:options.args}).openAtLogin;}
+  function configureLogin(enabled){return configureLoginStartup(app,{enabled,executable:desktop?path.join(installRoot,'LingPet.exe'):app.getPath('exe'),root:contentRoot,packaged:desktop||app.isPackaged});}
   if(registry.config.global.launchAtLogin)try{configureLogin(true);}catch(error){recordError('开机启动',error);}
   const resumeFile=path.join(dir,'runtime-restart.json');
   if(process.argv.includes('--hot-restart')){
@@ -213,7 +213,10 @@ export async function launchDesktop(dir){
     if(body?.action==='generation-preferences')return new GenerationAPISettings(dir).priorities();
     if(body?.action==='generation-preferences-save')return new GenerationAPISettings(dir).setPriorities(body.priorities);
     if(body?.action==='generation-api-config')return new GenerationAPISettings(dir).get();
+    if(body?.action==='generation-api-models')return new GenerationAPISettings(dir).models(body.kind,body.values);
     if(body?.action==='generation-api-configure')return new GenerationAPISettings(dir).configure(body.kind,body.values);
+    if(body?.action==='generation-video-save')return new GenerationAPISettings(dir).saveVideo(body.id,body.values);
+    if(body?.action==='generation-video-remove')return new GenerationAPISettings(dir).removeVideo(body.id);
     if(body?.action==='status'||body?.action==='diagnostics'){
       const report=diagnosticReport({release,pets:registry.pets,sessions:store.snapshot().sessions,uptime:process.uptime(),memory:process.memoryUsage(),logs:recentErrors,update:updateStatus,platform:process.platform,login:registry.config.global.launchAtLogin});
       return {...report,storage:await desktopStorage(dir),distribution:desktop?'desktop':'plugin',settingsRecovery:settingsStore.recovery,loginSupported:process.platform==='win32'||process.platform==='darwin'&&app.isPackaged};
@@ -276,7 +279,7 @@ export async function launchDesktop(dir){
   ipcMain.handle('pet:market',async(event,body)=>{
     if(!isWindowSender(event,settingsWindow))throw new Error('仅工作台可访问市场管理');
     if(body?.action==='config')return market.config();
-    if(body?.action==='library'){const result=await market.library({checkUpdates:Boolean(body.checkUpdates),appearances:customAppearances});return {...result,activeAppearance:registry.get(activePetId)?.appearance};}
+    if(body?.action==='library'){const result=await market.library({checkUpdates:Boolean(body.checkUpdates),appearances:customAppearances,includeBuiltin:true});return {...result,activeAppearance:registry.get(activePetId)?.appearance};}
     if(body?.action==='uninstall'){
       const entry=customAppearances.find(e=>e.id===body.appearanceId);if(!entry)throw new Error('该形象未安装');
       const ids=new Set([entry.id,...(entry.aliases||[]).map(a=>a.id)]),used=registry.pets.filter(p=>ids.has(p.appearance));
@@ -285,10 +288,10 @@ export async function launchDesktop(dir){
       await reloadAppearances();return {snapshot:snapshot()};
     }
     if(body?.action==='use-version'){
-      const entry=customAppearances.find(e=>e.id===body.appearanceId);if(!entry)throw new Error('该版本未安装');const pet=registry.require(body.petId);manage({action:'update',id:pet.id,value:{character:entry.character,appearance:entry.id,variant:entry.variants.includes(pet.variant)?pet.variant:entry.variants[0]}});await save();return {snapshot:snapshot()};
+      const builtin=CHARACTERS.flatMap(c=>c.appearances.filter(a=>!a.custom).map(a=>({...a,character:c.id}))),entry=customAppearances.find(e=>e.id===body.appearanceId)||builtin.find(e=>e.id===body.appearanceId&&e.character===body.character);if(!entry)throw new Error('该版本未安装');const pet=registry.require(body.petId);manage({action:'update',id:pet.id,value:{character:entry.character,appearance:entry.id,variant:entry.variants.includes(pet.variant)?pet.variant:entry.variants[0]}});await save();return {snapshot:snapshot()};
     }
     if(body?.action==='configure')return market.configure(body.url);
-    if(body?.action==='list')return market.list(body.query);
+    if(body?.action==='list')return market.list(body.query,body.filters);
     if(body?.action==='detail')return market.detail(body.versionId);
     if(body?.action==='github'){const links=githubLinks(body.repository,body.tag);if(!['repository','release'].includes(body.target))throw new Error('无效 GitHub 链接类型');await shell.openExternal(links[body.target]);return {opened:true};}
     if(body?.action==='image')return market.image(body);
@@ -305,7 +308,7 @@ export async function launchDesktop(dir){
     }
     let result;
     if(body?.action==='import'){const selected=await dialog.showOpenDialog(settingsWindow,{title:'导入桌宠分享包',properties:['openFile'],filters:[{name:'灵伴桌宠包',extensions:['petpack']}]});if(selected.canceled)return {cancelled:true};const {stat}=await import('node:fs/promises');if((await stat(selected.filePaths[0])).size>200*1024*1024)throw new Error('资源包过大');result=await installPetpack(dir,await readFile(selected.filePaths[0]));}
-    else if(body?.action==='install')result=await market.install(body.versionId);
+    else if(body?.action==='install')result=await market.install(body.versionId,{onProgress:value=>{if(typeof body.requestId==='string'&&body.requestId.length<=100&&!event.sender.isDestroyed())event.sender.send('pet:market-progress',{...value,requestId:body.requestId});}});
     else throw new Error('未知市场操作');
     await reloadAppearances();const entry=result.appearance,variant=entry.variants.includes('pixel')?'pixel':entry.variants[0];
     if(body.mode==='apply'){registry.require(body.petId);manage({action:'update',id:body.petId,value:{character:entry.character,appearance:entry.id,variant}});}

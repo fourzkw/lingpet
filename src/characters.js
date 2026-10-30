@@ -21,18 +21,19 @@ export const DRAFT_APPEARANCES=[
   {character:'chatgpt',id:'white-dragon-v2',name:'白羽龙姬 · 新生',asset:'chatgpt-q-v2',variants:['original','pixel'],pixelSize:192,doneMs:5250},
 ];
 export const CHARACTER_IDS=CHARACTERS.map(character=>character.id);
+export function appearanceName(entry){return entry.package&&entry.name===entry.package.name+' · '+entry.package.version?entry.package.name:entry.name;}
 export function setCustomAppearances(entries=[],roles=[]){
   savedEntries=entries;savedRoles=roles;
   CHARACTERS.splice(0,CHARACTERS.length,...structuredClone(BUILTIN_CHARACTERS).map(c=>({...c,appearances:c.appearances.filter(a=>bundled.has(a.asset))})).filter(c=>c.appearances.length));
   for(const base of BUILTIN_CHARACTERS)if(entries.some(e=>e.character===base.id)&&!CHARACTERS.some(c=>c.id===base.id))CHARACTERS.push({...base,appearances:[]});
   for(const role of roles)if(/^custom-[a-z0-9-]{3,64}$/.test(role.id)&&!CHARACTERS.some(c=>c.id===role.id))CHARACTERS.push({...role,customRole:true,tag:'CUSTOM',appearances:[]});
-  for(const entry of entries)if(entry.community&&/^community-[a-z0-9-]{3,64}$/.test(entry.character)&&!CHARACTERS.some(c=>c.id===entry.character))CHARACTERS.push({id:entry.character,name:entry.characterName||entry.package?.name||'社区桌宠',description:'社区作品',tag:'COMMUNITY',community:true,appearances:[]});
+  for(const entry of entries)if(entry.community&&/^community-[a-z0-9-]{3,64}$/.test(entry.character)&&!CHARACTERS.some(c=>c.id===entry.character))CHARACTERS.push({id:entry.character,name:entry.characterName||entry.package?.name||'社区桌宠',description:entry.characterDescription||'社区作品',tag:'COMMUNITY',community:true,appearances:[]});
   CHARACTER_IDS.splice(0,CHARACTER_IDS.length,...CHARACTERS.map(c=>c.id));
   for(const character of CHARACTERS){
     character.appearances=character.appearances.filter(a=>!a.custom);
     for(const entry of entries.filter(e=>e.character===character.id)){
       if(character.appearances.some(a=>a.id===entry.id))throw new Error('自定义形象不能覆盖内置形象');
-      character.appearances.push({id:entry.id,name:entry.name,asset:'custom:'+entry.id,variants:entry.variants,pixelSize:entry.pixelSize,doneMs:entry.doneMs,custom:true});
+      character.appearances.push({id:entry.id,name:appearanceName(entry),packageVersion:entry.package?.version,asset:'custom:'+entry.id,variants:entry.variants,pixelSize:entry.pixelSize,doneMs:entry.doneMs,custom:true});
     }
   }
 }

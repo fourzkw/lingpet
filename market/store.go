@@ -13,17 +13,26 @@ import (
 	"time"
 )
 
+type Character struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
 type Pet struct {
-	FormatVersion int    `json:"formatVersion"`
-	ID            string `json:"id"`
-	Name          string `json:"name"`
-	Version       string `json:"version"`
-	Author        string `json:"author"`
-	License       string `json:"license"`
-	Description   string `json:"description"`
-	MinAppVersion string `json:"minAppVersion"`
+	FormatVersion int        `json:"formatVersion"`
+	ID            string     `json:"id"`
+	Name          string     `json:"name"`
+	Version       string     `json:"version"`
+	Author        string     `json:"author"`
+	License       string     `json:"license"`
+	Description   string     `json:"description"`
+	MinAppVersion string     `json:"minAppVersion"`
+	Character     *Character `json:"character,omitempty"`
 }
 type Clip struct {
+	Alternatives []Clip `json:"alternatives,omitempty"`
+	Selection    string `json:"selection,omitempty"`
 	File         string `json:"file"`
 	SourceFrames int    `json:"sourceFrames"`
 	Frames       []int  `json:"frames"`
@@ -63,22 +72,23 @@ type Review struct {
 	At     time.Time `json:"at"`
 }
 type Record struct {
-	Stats      *PetStats `json:"stats"`
-	ID         string    `json:"id"`
-	Repository string    `json:"repository"`
-	Tag        string    `json:"tag"`
-	AssetName  string    `json:"assetName"`
-	Submitter  string    `json:"submitter"`
-	Status     string    `json:"status"`
-	Error      string    `json:"error,omitempty"`
-	Pet        *Pet      `json:"pet,omitempty"`
-	Source     *Asset    `json:"source,omitempty"`
-	SHA256     string    `json:"sha256,omitempty"`
-	Size       int64     `json:"size"`
-	Preview    *Manifest `json:"preview,omitempty"`
-	Reviews    []Review  `json:"reviews"`
-	Created    time.Time `json:"createdAt"`
-	Updated    time.Time `json:"updatedAt"`
+	Work       *RepositoryPet `json:"work,omitempty"`
+	Stats      *PetStats      `json:"stats"`
+	ID         string         `json:"id"`
+	Repository string         `json:"repository"`
+	Tag        string         `json:"tag"`
+	AssetName  string         `json:"assetName"`
+	Submitter  string         `json:"submitter"`
+	Status     string         `json:"status"`
+	Error      string         `json:"error,omitempty"`
+	Pet        *Pet           `json:"pet,omitempty"`
+	Source     *Asset         `json:"source,omitempty"`
+	SHA256     string         `json:"sha256,omitempty"`
+	Size       int64          `json:"size"`
+	Preview    *Manifest      `json:"preview,omitempty"`
+	Reviews    []Review       `json:"reviews"`
+	Created    time.Time      `json:"createdAt"`
+	Updated    time.Time      `json:"updatedAt"`
 }
 type Session struct {
 	AuthKey string    `json:"authKey,omitempty"`
@@ -162,29 +172,19 @@ func (s *Store) review(id, actor, action, reason string) error {
 		if e := json.Unmarshal(v, &r); e != nil {
 			return e
 		}
-		if action == "approve" {
-			if r.Status != "pending" {
-				return errors.New("仅待审核版本可以通过")
-			}
-			r.Status = "approved"
-		} else if action == "retry" {
+		if action == "retry" {
 			if r.Status != "failed" {
 				return errors.New("仅校验失败的投稿可以重试")
 			}
 			r.Status = "queued"
 			r.Error = ""
-		} else if action == "reject" {
-			if r.Status != "pending" || strings.TrimSpace(reason) == "" {
-				return errors.New("驳回需要待审核版本和原因")
-			}
-			r.Status = "rejected"
 		} else if action == "unpublish" {
 			if r.Status != "approved" || strings.TrimSpace(reason) == "" {
 				return errors.New("下架需要已上架版本和原因")
 			}
 			r.Status = "unpublished"
 		} else {
-			return errors.New("未知审核操作")
+			return errors.New("未知管理操作")
 		}
 		r.Updated = time.Now().UTC()
 		r.Reviews = append(r.Reviews, Review{actor, action, reason, r.Updated})

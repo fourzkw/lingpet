@@ -1,2 +1,10 @@
 @import url('./site.css');
 @import url('./companion.css');
+#admin-queue .admin-table{min-width:760px}
+#admin-queue .table-scroll:last-child .admin-table{min-width:1080px}
+#queueSummary{font-weight:600}
+#queueUpdated{font-size:12px;color:var(--muted)}
+.download-page #downloadCards{grid-template-columns:minmax(0,640px)}
+.market-browse-filters{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin:20px 0 10px}
+.market-browse-filters label{display:flex;flex-direction:column;gap:5px;margin:0;font-size:12px;color:var(--muted)}
+.market-browse-filters select{min-width:140px;max-width:100%}

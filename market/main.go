@@ -67,6 +67,11 @@ func main() {
 		return
 	}
 	cfg := Config{Addr: env("LINGPET_LISTEN", "127.0.0.1:9633"), PublicURL: strings.TrimSuffix(env("LINGPET_PUBLIC_URL", "https://lingpet.fourzkw.top"), "/"), DataDir: env("LINGPET_DATA_DIR", "./data"), DownloadDir: os.Getenv("LINGPET_DOWNLOAD_DIR"), GitHubToken: os.Getenv("GITHUB_TOKEN"), Dev: os.Getenv("LINGPET_DEV_MODE") == "true", AdminUser: env("LINGPET_ADMIN_USER", "admin"), AdminPasswordHash: os.Getenv("LINGPET_ADMIN_PASSWORD_HASH")}
+	syncInterval, syncErr := time.ParseDuration(env("LINGPET_SYNC_INTERVAL", "24h"))
+	if syncErr != nil || syncInterval < 0 || (syncInterval > 0 && syncInterval < time.Hour) {
+		log.Fatal("LINGPET_SYNC_INTERVAL 必须为至少 1h 的时长，或 0（关闭）")
+	}
+	cfg.SyncInterval = syncInterval
 	if e := validPublicURL(cfg.PublicURL, cfg.Dev); e != nil {
 		log.Fatal(e)
 	}

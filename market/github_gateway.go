@@ -12,6 +12,7 @@ import (
 )
 
 var githubGateways = map[string]string{"direct": "", "gh-proxy": "https://gh-proxy.com/", "ghfast": "https://ghfast.top/"}
+var errGitHubNotFound = errors.New("GitHub 返回 404，请检查公开仓库、Release 标签或展示文件是否存在")
 
 func githubRoutes(raw string) ([]string, error) {
 	var routes []string
@@ -54,7 +55,7 @@ func (g *githubClient) get(ctx context.Context, path string, out any) error {
 		}
 		// A direct GitHub 404 is authoritative. Mirrors may have incomplete API support.
 		if route == "direct" && status == 404 {
-			return errors.New("GitHub 返回 404，请检查公开仓库、Release 标签或展示文件是否存在")
+			return errGitHubNotFound
 		}
 		failures = append(failures, fmt.Sprintf("%s: %v", route, e))
 	}

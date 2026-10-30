@@ -44,7 +44,7 @@ function renderAppearances(settings){
       const button=document.createElement('button');button.className='appearance-card';button.dataset.appearance=item.id;button.dataset.requiresPet='';
       const art=document.createElement('canvas');art.width=art.height=192;art.dataset.appearancePreview=item.id;
       const title=document.createElement('strong');title.textContent=item.name;const formats=document.createElement('small');formats.textContent=item.variants.map(id=>VARIANTS.find(v=>v.id===id).name).join(' / ');
-      button.append(art,title,formats);button.onclick=()=>change({appearance:item.id});$('appearanceGrid').append(button);
+      button.append(art,title);if(item.packageVersion){const version=document.createElement('small');version.className='appearance-version';version.textContent='v'+item.packageVersion;button.append(version);}button.append(formats);button.onclick=()=>change({appearance:item.id});$('appearanceGrid').append(button);
     }
   }
   for(const button of $('appearanceGrid').children){const active=button.dataset.appearance===skin.id;button.classList.toggle('selected',active);button.setAttribute('aria-pressed',String(active));}
@@ -110,7 +110,7 @@ function update(value){
   for(const button of document.querySelectorAll('[data-character]')){const selected=button.dataset.character===value.settings.character;button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));}
   $('showPet').textContent=petIsVisible(value.settings)?'隐藏桌宠':'显示桌宠';
   $('previewNote').textContent=petIsVisible(value.settings)?'桌宠已显示，设置自动保存':'桌宠已隐藏，仍保留配置与会话跟随';
-  $('backLive').hidden=!value.current.demo;
+  $('backLive').disabled=!value.activePetId||!value.current.demo;
   document.querySelector('.session-panel').hidden=follow.mode!=='session'&&!pendingSessionSelection;
   if(changedPet||!scaleEditing)renderScale(scaleStep(value.settings.scale));
   $('alwaysOnTop').checked=value.settings.alwaysOnTop;$('showLabel').checked=value.settings.showLabel;

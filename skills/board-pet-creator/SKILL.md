@@ -13,9 +13,11 @@ description: 为灵伴桌宠插件从参考图或纯文本描述创作、修改�
 
 当前工具版本的真实名称、输入规则与调用顺序见 [创作工具](references/tools.md)。使用当前插件工具时先读取该文；旧安装版本未必已经提供这些能力。
 
+使用 ComfyUI 时，[推荐模型配置](references/tools.md#推荐的-comfyui-模型配置) 列出已验证的 Qwen Image 2.1 / MiniMax H3 模型绑定。用户保存的配置优先；推荐文件名须经当前环境检测后使用。
+
 Skill 本身不增加生成接口，不附带模型或 ComfyUI，也不保证宿主能读取本机路径。缺少执行能力时完成可做的设定和提示词整理，准确说明缺少哪一项；不要声称已经提交、生成或安装。
 
-生成前调用 `board_pet_generation_settings {action:"inspect"}`，读取应用设置中的生图／视频服务、协议和各自优先级。默认通过插件生成工具的 `provider:"auto"` 遵循用户设置；用户明确指定服务时传对应 provider。不要用宿主 imagegen 覆盖已配置优先级；用户明确要求宿主工具时才单独使用并将结果导入项目。具体参数、任务恢复和服务限制见 [生成服务与优先级](references/generation-services.md)。
+生成前调用 `board_pet_generation_settings {action:"inspect"}`，读取应用设置中的生图／视频服务、协议和各自优先级。默认通过插件生成工具的 `provider:"auto"` 遵循用户设置；用户明确指定服务时传对应 provider。当前宿主提供 ImageGen 工具时，调用生图工具传 `hostTools:["imagegen"]`，使 Codex ImageGen 按设置优先级参与选择；不可用时省略。返回 `provider:"imagegen",status:"requires_host_tool"` 时，按返回的提示词和参考图调用宿主 ImageGen，再通过 `add_reference` 导入结果并审阅、`select_base`。这是交接请求，不是已经生成成功或后台任务，不要轮询。用户明确指定 Codex ImageGen 时可传 `provider:"imagegen"`。具体参数、任务恢复和服务限制见 [生成服务与优先级](references/generation-services.md)。
 
 不因加载 Skill 就自动启动任务。用户仅询问流程、提示词或创建 Skill 时，不生成素材。用户要求停止时，停止当前项目的调度及所属生成任务，保留产物和进度；之后讨论流程不构成恢复生成的授权。
 

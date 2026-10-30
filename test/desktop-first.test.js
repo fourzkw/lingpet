@@ -201,6 +201,26 @@ test('installer supports custom Unicode and spaced directories and repeat instal
   assert.equal(installed.root,target);assert.equal(JSON.parse(await readFile(path.join(dir,'desktop-install.json'),'utf8')).root,target);
   assert.equal((await installDesktop({payload,root:target,dir,healthCheck:false})).previous,'0.7.1');
 });
+test('installer rejects changed same-version payloads and upgrades 0.7.20 to 0.7.21 preserving user data',async t=>{
+  const {root,dir,payload}=await installerFixture(t),target=path.join(root,'installed');
+  const setVersion=async(version,revision)=>{
+    await writeFile(path.join(payload,'resources/app/package.json'),JSON.stringify({version,lingpetDesktop:true}));
+    await writeFile(path.join(payload,'desktop-manifest.json'),JSON.stringify({format:1,version,files:[],revision}));
+  };
+  await setVersion('0.7.20','original');
+  await installDesktop({payload,root:target,dir,healthCheck:false});
+  await writeFile(path.join(dir,'saved-pet.petpack'),'user pet data');
+  await writeFile(path.join(dir,'settings.json'),'{"launchAtLogin":true}');
+  await setVersion('0.7.20','startup-fix');
+  await assert.rejects(installDesktop({payload,root:target,dir,healthCheck:false}),/同版本的不同内容/);
+  await setVersion('0.7.21','startup-fix');
+  const result=await installDesktop({payload,root:target,dir,healthCheck:false});
+  assert.equal(result.version,'0.7.21');assert.equal(result.previous,'0.7.20');
+  assert.equal(JSON.parse(await readFile(path.join(target,'active.json'),'utf8')).active,'0.7.21');
+  assert.equal(await readFile(path.join(dir,'saved-pet.petpack'),'utf8'),'user pet data');
+  assert.equal(await readFile(path.join(dir,'settings.json'),'utf8'),'{"launchAtLogin":true}');
+});
+
 test('installer refuses unrelated nonempty folders and overlapping program/data directories',async t=>{
   const {root,dir,payload}=await installerFixture(t),target=path.join(root,'documents');await mkdir(target);await writeFile(path.join(target,'keep.txt'),'user content');
   await assert.rejects(installDesktop({payload,root:target,dir,healthCheck:false}),/非空/);

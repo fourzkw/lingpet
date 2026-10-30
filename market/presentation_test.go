@@ -64,7 +64,7 @@ func TestFailedSubmissionCanRetryLightweightValidation(t *testing.T) {
 	}
 	s.validate(context.Background(), r)
 	s.store.get("records", r.ID, &r)
-	if r.Status != "pending" || r.Preview != nil || r.SHA256 != "" {
+	if r.Status != "approved" || r.Preview == nil || len(r.SHA256) != 64 {
 		t.Fatalf("%+v", r)
 	}
 }

@@ -4,6 +4,8 @@ import {randomUUID} from 'node:crypto';
 import {DshObserver} from '../../src/dsh-observer.js';
 import {integrationRequest,creationProxy} from '../../src/integrations/client.js';
 import {registerDshCreationTools} from '../../src/creation/dsh-tools.js';
+import {registerCreationSkill} from '../../src/creation/skill.js';
+import {fileURLToPath} from 'node:url';
 
 export const name='board-ai-pet',inject=['agents','sessions'];
 export const Config=Schema.object({includeSubagents:Schema.boolean().default(false).description('显示子 Agent')});
@@ -15,6 +17,7 @@ export async function apply(ctx,config={}){
   let lastGeneration;
   async function flush(){if(closed||sending)return;sending=true;try{const status=await send('/heartbeat',{instanceId:observer.instanceId});if(lastGeneration!==status.generation||status.resync){lastGeneration=status.generation;observer.resync();}for(const [key,event]of queue){await send('/event',event);if(queue.get(key)===event)queue.delete(key);}}catch{}finally{sending=false;}}
   ctx.inject(['tools'],child=>registerDshCreationTools(child,creationProxy(dir,id)));
+  ctx.inject(['skills'],child=>registerCreationSkill(child,{file:fileURLToPath(new URL('./skills/board-pet-creator/SKILL.md',import.meta.url))}));
   ctx.on('session/event',(session,event)=>observer.observe(String(session.id),event));
   ctx.on('agent/status',({agent,status})=>observer.status(String(agent.id),status));
   ctx.on('agent/disposed',({agent})=>observer.dispose(String(agent.id)));

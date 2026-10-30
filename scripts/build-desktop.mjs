@@ -24,7 +24,8 @@ const application=JSON.parse(await readFile(path.join(app,'package.json'),'utf8'
 await writeFile(path.join(app,'desktop-distribution.json'),JSON.stringify({format:1,version:pkg.version}));
 const adapter=path.join(app,'adapters/dsh');await mkdir(adapter,{recursive:true});
 await build({entryPoints:['adapters/dsh/entry.js'],outfile:path.join(adapter,'index.js'),bundle:true,platform:'node',format:'esm',target:'node22'});
-await writeFile(path.join(adapter,'package.json'),JSON.stringify({name:'lingpet-agent',version:pkg.version,type:'module',main:'index.js',files:['index.js','connection.json','cordis.patch.yml'],dsh:{bundle:{patch:'./cordis.patch.yml'}},dependencies:{}}));
+await cp(path.join(root,'skills'),path.join(adapter,'skills'),{recursive:true});
+await writeFile(path.join(adapter,'package.json'),JSON.stringify({name:'lingpet-agent',version:pkg.version,type:'module',main:'index.js',files:['index.js','connection.json','cordis.patch.yml','skills'],dsh:{bundle:{patch:'./cordis.patch.yml'}},dependencies:{}}));
 await writeFile(path.join(adapter,'cordis.patch.yml'),'- insert:\n    - id: board-ai-pet\n      name: lingpet-agent\n');
 const compiler=process.env.LINGPET_CSC||'C:/Windows/Microsoft.NET/Framework64/v4.0.30319/csc.exe';await access(compiler);
 const common=['/nologo','/optimize+','/reference:System.Web.Extensions.dll','/reference:System.Windows.Forms.dll'];

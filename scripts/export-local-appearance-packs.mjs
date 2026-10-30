@@ -23,6 +23,6 @@ for(const definition of definitions){
  const verification=await mkdtemp(path.resolve('output/appearance-import-verification-'));
  const imported=await installPetpack(verification,result.bytes,{expectedSHA256:result.sha256}),report=await validateAppearance(imported.appearance.root);
  assert.ok(report.valid&&report.complete);assert.equal((await loadCustomAppearances(verification)).length,1);
- const item={id:pack.pet.id,name:pack.pet.name,version:pack.pet.version,file:definition.id+'/'+result.name,size:result.bytes.length,sha256:sha256(result.bytes),variants:pack.manifest.variants,states:Object.keys(pack.manifest.clips),importVerified:true};packs.push(item);console.log(JSON.stringify(item));
+ const item={id:pack.pet.id,name:pack.pet.name,character:pack.pet.character,version:pack.pet.version,file:definition.id+'/'+result.name,size:result.bytes.length,sha256:sha256(result.bytes),variants:pack.manifest.variants,states:Object.keys(pack.manifest.clips),importVerified:true};packs.push(item);console.log(JSON.stringify(item));
 }
 await writeFile(path.join(out,'manifest.json'),JSON.stringify({packs},null,2)+'\n');await writeFile(path.join(out,'SHA256SUMS.txt'),packs.map(p=>p.sha256+'  '+p.file).join('\n')+'\n');console.log(out);

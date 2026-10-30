@@ -1,6 +1,6 @@
 {
   "name": "lingpet",
-  "version": "0.7.14",
+  "version": "0.7.26",
   "boardPetProtocol": 1,
   "description": "灵伴 LingPet：跟随 AI 会话的桌面伙伴，支持形象创作与多桌宠管理",
   "type": "module",
@@ -95,6 +95,6 @@
     "esbuild": "^0.28.2",
     "pnpm": "10.34.9"
   },
-  "license": "UNLICENSED",
+  "license": "MIT",
   "productName": "灵伴"
 }
