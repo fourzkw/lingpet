@@ -6,6 +6,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 for(const stream of [process.stdout,process.stderr])stream?.on('error',error=>{if(error.code!=='EPIPE')throw error;});
 const root=path.resolve(process.argv[2]),packDirectory=process.argv[3]?.startsWith('--')?undefined:process.argv[3],out=path.resolve('output/release-runtime-'+Date.now());
+process.env.LINGPET_INSTALL_ROOT=path.resolve(root,'../..');
 app.setPath('userData',out);app.disableHardwareAcceleration();
 // Keep the packaged runtime in this isolated test process rather than installing it.
 process.env.BOARD_PET_LIFECYCLE_SMOKE='release-verification';process.argv.push('--dashboard');
@@ -55,21 +56,21 @@ async function run(){try{
  }finally{dialog.showOpenDialog=originalOpenDialog;}
  await dashboard.webContents.executeJavaScript("document.getElementById('showMyPets').click()");
  if(await dashboard.webContents.executeJavaScript("Boolean(document.getElementById('openIntegrations'))")){
-   assert.equal(await dashboard.webContents.executeJavaScript("(async()=>{document.getElementById('onboardingConnect').click();const result=await window.pet.integrations({action:'list'});return !document.getElementById('integrationsView').hidden&&result.targets.length===3&&!JSON.stringify(result).includes('controlToken')&&document.querySelectorAll('#integrationsView #hostConnections p').length===3;})()"),true,'first-connection button opens centralized Agent status');
+   assert.equal(await dashboard.webContents.executeJavaScript("(async()=>{document.getElementById('onboardingConnect').click();const result=await window.pet.integrations({action:'list'});return !document.getElementById('integrationsView').hidden&&result.targets.length===3&&!JSON.stringify(result).includes('controlToken')&&document.querySelectorAll('#integrationsView #hostConnections .integration-connection-card').length===3;})()"),true,'first-connection button opens centralized Agent status');
    assert.equal(await dashboard.webContents.executeJavaScript("document.getElementById('integrationSource').value==='codex'&&!document.getElementById('integrationAdvanced').open&&!document.getElementById('integrationDetection').hidden&&document.getElementById('integrationProfileRow').hidden"),true,'Codex installation defaults to automatic discovery without manual parameters');
    assert.equal(await dashboard.webContents.executeJavaScript("(()=>{const source=document.getElementById('integrationSource');source.value='cursor';source.dispatchEvent(new Event('change',{bubbles:true}));return !document.getElementById('integrationAdvanced').open&&!document.getElementById('integrationDetection').hidden&&document.getElementById('integrationDetection').textContent.includes('Cursor 默认配置目录')&&document.getElementById('integrationExecutableRow').hidden&&document.getElementById('integrationProfileRow').hidden;})()"),true,'Cursor defaults to automatic configuration without command or profile fields');
    await new Promise(resolve=>setTimeout(resolve,400));
-   assert.equal(await dashboard.webContents.executeJavaScript("document.getElementById('integrationConfig').getClientRects().length===0"),true,'Cursor hides custom configuration until advanced options are opened');
+   assert.equal(await dashboard.webContents.executeJavaScript("!document.getElementById('integrationConfig').checkVisibility()"),true,'Cursor hides custom configuration until advanced options are opened');
    assert.equal(await dashboard.webContents.executeJavaScript("(()=>{document.getElementById('integrationAdvanced').open=true;return Boolean(document.getElementById('integrationChooseConfig'));})()"),true,'Cursor retains custom directory selection in advanced options');
    await dashboard.webContents.executeJavaScript("document.getElementById('integrationAdvanced').open=false");
    const {IntegrationManager}=await load('src/integrations/manager.js');
-   const manager=new IntegrationManager({dir:out,root,bridge:path.join(out,'LingPetBridge.exe'),version:JSON.parse(await readFile(path.join(root,'package.json'),'utf8')).version});
+   const manager=new IntegrationManager({dir:out,root,bridge:path.join(process.env.LINGPET_INSTALL_ROOT,'LingPetBridge.exe'),version:JSON.parse(await readFile(path.join(root,'package.json'),'utf8')).version});
    const item=await manager.install({source:'cursor',config:path.join(out,'test-cursor')});
    await dashboard.webContents.executeJavaScript("document.getElementById('refreshIntegrations').click()");
    for(let i=0;i<50&&!await dashboard.webContents.executeJavaScript("document.querySelector('.onboarding').hidden");i++)await new Promise(resolve=>setTimeout(resolve,50));
    assert.equal(await dashboard.webContents.executeJavaScript("document.querySelector('.onboarding').hidden"),true,'installed Agent hides onboarding even without a live connection');
    assert.equal(await dashboard.webContents.executeJavaScript("[...document.querySelectorAll('#integrationList button')].some(button=>button.textContent==='重新安装接入')"),true,'current integration offers reinstall');
-   const records=await manager.records();records.find(record=>record.id===item.id).version='0.0.1';await manager.save(records);
+   const records=await manager.records();Object.assign(records.find(record=>record.id===item.id),{adapterVersion:'0.0.1',adapterFingerprint:'outdated-fixture'});await manager.save(records);
    await dashboard.webContents.executeJavaScript("document.getElementById('refreshIntegrations').click()");
    for(let i=0;i<50&&!await dashboard.webContents.executeJavaScript("[...document.querySelectorAll('#integrationList button')].some(button=>button.textContent==='更新接入')");i++)await new Promise(resolve=>setTimeout(resolve,50));
    assert.equal(await dashboard.webContents.executeJavaScript("[...document.querySelectorAll('#integrationList button')].some(button=>button.textContent==='更新接入')"),true,'older integration offers update');
@@ -91,7 +92,7 @@ async function run(){try{
    assert.equal(await dashboard.webContents.executeJavaScript("!document.querySelector('.onboarding').hidden"),true,'removing all integrations restores the connection entry');
    assert.equal(await dashboard.webContents.executeJavaScript("(()=>{const source=document.getElementById('integrationSource');source.value='dsh';source.dispatchEvent(new Event('change',{bubbles:true}));return !document.getElementById('integrationAdvanced').open&&!document.getElementById('integrationDetection').hidden&&!document.getElementById('integrationConfig').required;})()"),true,'DSH installation defaults to automatic discovery without required manual fields');
    await new Promise(resolve=>setTimeout(resolve,400));
-   assert.equal(await dashboard.webContents.executeJavaScript("document.getElementById('integrationConfig').getClientRects().length===0"),true,'collapsed advanced options do not expose manual fields');
+   assert.equal(await dashboard.webContents.executeJavaScript("!document.getElementById('integrationConfig').checkVisibility()"),true,'collapsed advanced options do not expose manual fields');
    await dashboard.webContents.executeJavaScript("document.getAnimations().forEach(animation=>animation.finish())");
    await dashboard.webContents.capturePage(undefined,{stayHidden:true,stayAwake:true});await new Promise(resolve=>setTimeout(resolve,150));
    await writeFile(path.join(out,'agent-integrations.png'),(await dashboard.webContents.capturePage(undefined,{stayHidden:true,stayAwake:true})).toPNG());

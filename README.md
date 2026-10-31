@@ -20,9 +20,9 @@
 当前支持 **Windows x64 本机环境**。
 
 1. 前往 [GitHub Releases](https://github.com/fourzkw/lingpet/releases/latest)，下载 `LingPet-Setup-<版本号>.exe` 并安装。
-2. 打开灵伴工作台，进入 **Agent 接入**，选择已安装的 Codex、Cursor 或 DSH，点击安装接入插件。
-3. 按完成提示重新打开宿主、启用插件或审核 Hooks；在宿主中新建会话并发送一条消息，确认连接状态。
-4. 在 **我的桌宠** 中选择形象与会话跟随方式，点击 **显示桌宠**。
+2. 打开灵伴工作台，在 **我的桌宠** 中选择伙伴，点击 **显示到桌面**。首次安装默认“不跟随会话”，可直接待机陪伴、点击和摸头。
+3. 想跟随 AI 工作状态时，进入 **Agent 接入**，选择已安装的 Codex、Cursor 或 DSH，点击 **安装接入插件**。
+4. 按完成提示重新打开宿主、启用插件或审核 Hooks；新建会话并发送一条消息，确认接入页收到真实事件，再检查桌宠的跟随来源。若正在动作试映，点击 **恢复实时动作**。
 
 安装程序包含 Electron、私有 Node.js 与所需运行环境，普通用户无需自行安装 Node.js。当前统一使用桌面安装包，Agent 接入由应用内管理。
 
@@ -36,9 +36,11 @@
 | Cursor | 重新加载窗口或重新打开，新建 Agent 会话验证。 |
 | DSH | 确认接入的是正在使用的配置目录和 profile，重启 DSH 后发送消息验证。 |
 
+本体与接入插件独立版本；启动时仅自动更新内容发生变化的已安装接入。宿主重载或 Hooks 审核仍需按提示完成。
+
 接入页显示配置已安装，并不代表已经收到真实会话事件。使用多套宿主环境时，可展开高级选项指定相应位置。
 
-详细步骤见 [安装与 Agent 接入](docs/desktop-installation.md)。
+第一次使用请看 [快速开始](docs/getting-started.md)；安装位置、数据迁移和接入维护见 [安装与 Agent 接入](docs/desktop-installation.md)。
 
 ## 桌宠市场与作品分享
 
@@ -60,6 +62,7 @@
 
 在 **应用设置 → 创作服务** 中配置服务，并调整生图与视频的调用优先级。可用的生成能力取决于宿主工具及你配置的服务；使用外部生成服务时，按该服务要求提供密钥并承担相应费用。普通会话状态跟随无需配置模型 API 密钥。
 
+- [ComfyUI 安装、模型下载与配置](docs/comfyui-setup.md)
 - [生成服务配置](docs/generation-services.md)
 - [桌宠创作技能](skills/board-pet-creator/SKILL.md)
 - [创作工具参数](skills/board-pet-creator/references/tools.md)

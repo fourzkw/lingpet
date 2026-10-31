@@ -10,7 +10,13 @@ export async function runMultiPetSmoke({app,registry,store,windows,openSettings,
   const onError=e=>failures.push(e.stack||String(e));process.on('uncaughtException',onError);
   try{
     const endpoint=await readEndpoint(dir),manage=body=>request(endpoint,'/pets/manage',body,5000);
-    const first=registry.pets[0];await manage({action:'update',id:first.id,value:{name:'DSH 桌宠',character:'claude',follow:{mode:'source',source:'dsh'}}});
+    const first=registry.pets[0];
+    assert.equal(first.follow.mode,'none');assert.equal(snapshot(first.id).current.state,'idle');
+    store.register('management-only','codex','management');assert.equal(first.follow.mode,'none');
+    store.register('initial-agent','codex');assert.deepEqual(first.follow,{mode:'source',source:'codex'});
+    store.disconnect('initial-agent');store.disconnect('management-only');
+    checks.push('fresh install stays standalone until an event-channel Agent connects');
+    await manage({action:'update',id:first.id,value:{name:'DSH 桌宠',character:'claude',follow:{mode:'source',source:'dsh'}}});
     const create=async value=>{const result=await manage({action:'create',value});const pet=result.pets.at(-1);await windows.get(pet.id).ready;await windows.get(pet.id).window.webContents.executeJavaScript("import('./pet.js').then(()=>true)");return pet;};
     const cursor=await create({name:'Cursor 桌宠',character:'deepseek',follow:{mode:'source',source:'cursor'}});
     const global=await create({name:'全局桌宠',follow:{mode:'global'}});
@@ -60,6 +66,15 @@ export async function runMultiPetSmoke({app,registry,store,windows,openSettings,
     for(let i=0;i<80;i++){if(await workbench.webContents.executeJavaScript("document.querySelectorAll('[data-select-pet]').length>0"))break;await pause(100);}
     const ui=await workbench.webContents.executeJavaScript("(async()=>({mode:document.getElementById('followMode').value,actual:(await window.pet.get()).settings.follow,selected:document.querySelector('.pet-list-row.selected')?.dataset.petId,name:document.getElementById('petName').value}))()");
     assert.equal(ui.mode,'cursor',JSON.stringify(ui));
+    await workbench.webContents.executeJavaScript("document.getElementById('followMode').value='none';document.getElementById('followMode').dispatchEvent(new Event('change'))");await pause(150);
+    assert.deepEqual(registry.require(cursor.id).follow,{mode:'none'});
+    store.accept({version:1,source:'cursor',scopeId:'cursor-local',instanceId:'cursor',sessionId:'cursor-task',turn:2,seq:10,state:'approval'});await pause(150);
+    assert.equal(snapshot(cursor.id).current.state,'idle');assert.equal(snapshot(cursor.id).current.sessionId,null);
+    assert.ok(await workbench.webContents.executeJavaScript("document.getElementById('currentSource').textContent.includes('不跟随会话')"));
+    await workbench.webContents.executeJavaScript("window.pet.demo('working')");assert.equal(snapshot(cursor.id).current.state,'working');
+    await workbench.webContents.executeJavaScript("window.pet.demo(null)");assert.equal(snapshot(cursor.id).current.state,'idle');
+    await workbench.webContents.executeJavaScript("document.getElementById('followMode').value='cursor';document.getElementById('followMode').dispatchEvent(new Event('change'))");await pause(150);
+    checks.push('standalone selector ignores live approval while demos work and return to idle');
     const sidebar=await workbench.webContents.executeJavaScript("({count:document.querySelectorAll('[data-select-pet]').length,names:[...document.querySelectorAll('.pet-list-select strong')].map(el=>el.textContent),selected:document.querySelector('.pet-list-row.selected')?.dataset.petId})");
     assert.equal(sidebar.count,4);assert.equal(sidebar.selected,cursor.id);assert.ok(sidebar.names.includes('DSH 桌宠'));
     await workbench.webContents.executeJavaScript(`document.querySelector('[data-select-pet="${first.id}"]').click()`);await pause(200);
@@ -92,6 +107,7 @@ export async function runMultiPetSmoke({app,registry,store,windows,openSettings,
     assert.ok(await workbench.webContents.executeJavaScript("document.getElementById('showPet').getBoundingClientRect().bottom<=innerHeight"),'show pet action stays visible at minimum window size');
     await writeFile(path.join(out,'workbench-compact.png'),(await workbench.webContents.capturePage()).toPNG());
     checks.push('workbench tabs, pending session binding, return to automatic follow, demo recovery and compact layout');
+    if(!process.env.BOARD_PET_FOLLOW_SMOKE){
     workbench.setSize(1130,920);await pause(200);
     for(const [character,appearance] of [['chatgpt','white-dragon'],['gemini','star-cat'],['chatgpt','cloud-dragon']]){
       await workbench.webContents.executeJavaScript(`document.querySelector('[data-character=${character}]').click()`);await pause(250);
@@ -138,9 +154,10 @@ export async function runMultiPetSmoke({app,registry,store,windows,openSettings,
     for(const result of companions.results){assert.ok(result.binary&&result.inside&&result.visible&&result.steadyTyping&&result.frames>=2,JSON.stringify(result));}
     for(const preview of companions.previews){await writeFile(path.join(out,preview.character+'.png'),Buffer.from(preview.idle.split(',')[1],'base64'));await writeFile(path.join(out,preview.character+'-states.png'),Buffer.from(preview.sheet.split(',')[1],'base64'));}
     checks.push('ChatGPT and Gemini: all eight animations, clean transparency, safe margins, stable typing, one-time recovery and workbench selection');
+    }
     const oldContents=windows.get(cursor.id).window.webContents;await manage({action:'update',id:cursor.id,value:{enabled:false}});assert.equal(windows.size,3);
     ipcMain.emit('pet:ignore-mouse',{sender:oldContents},true);ipcMain.emit('pet:drag',{sender:oldContents},true);checks.push('pausing destroys only one window and ignores its late IPC');
-    workbench.close();await windows.get(first.id).window.webContents.executeJavaScript('window.pet.get()');openSettings(first.id);await getSettingsReady();checks.push('closing/reopening workbench leaves all pet IPC valid');
+    await new Promise(resolve=>{workbench.once('closed',resolve);workbench.close();});await windows.get(first.id).window.webContents.executeJavaScript('window.pet.get()');openSettings(first.id);await getSettingsReady();checks.push('closing/reopening workbench leaves all pet IPC valid');
     await pause(300);const saved=JSON.parse(await readFile(path.join(dir,'settings.json'),'utf8'));assert.equal(saved.schemaVersion,2);assert.equal(saved.pets.find(p=>p.id===cursor.id).enabled,false);checks.push('independent pet configurations persist in schema v2');
     for(const pet of [...registry.pets])await manage({action:'remove',id:pet.id});assert.equal(windows.size,0);await pause(200);
     assert.ok(await getSettingsWindow().webContents.executeJavaScript("!document.getElementById('noPet').hidden && document.getElementById('petWorkspace').hidden"));

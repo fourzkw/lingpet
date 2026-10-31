@@ -32,6 +32,6 @@ export async function validateAppearance(root){
     }catch(e){errors.push(`${state}/${variant}: ${e.message}`);}}
     }
   }
-  if(!manifest.clips?.idle&&!INTERACTION_KINDS.some(k=>manifest.clips?.[k]))errors.push('缺少空闲动作');
+  if(!Object.keys(manifest.clips||{}).length)errors.push('缺少动作');
   return {valid:!errors.length,complete,errors,variants,manifest,visualReviewRequired:true};
 }

@@ -1,4 +1,16 @@
-# 发布内容与精简规则
+# 发布打包与内容规则
+
+## 当前 Windows 桌面版
+
+新用户统一使用 `LingPet-Setup-<版本号>.exe`，由 `npm run build:desktop` 构建。安装程序包含 Electron 二进制、私有 Node.js、备用 pnpm、应用代码、轻量 Agent 接入与内置 Claude 像素形象。用户无需为灵伴安装系统 Node.js，首次启动无需下载 Electron。
+
+产物目录包含安装程序、`release.json`、`payload` 和构建中间文件；对外提供安装程序及其校验信息。当前构建未签名，`release.json` 中的 `codeSigned=false` 应如实保留。版本读取根目录 `package.json`；Go 市场服务使用 `market/VERSION`，独立构建和发布。
+
+源码构建环境与隔离验收见 [开发者构建与验证](desktop-installation.md#开发者构建与验证)。新手安装步骤见 [快速开始](getting-started.md)。发布前还应在正常 Windows 环境验证最终安装程序、真实宿主接入、升级和卸载。
+
+以下资源白名单与许可保留规则继续适用。旧宿主独立包的依赖复制及 Electron 下载规则仅供历史构建维护，不作为当前新用户安装说明。
+
+## 历史宿主包的运行时规则
 
 0.6.10 起，DSH、Cursor、Codex 使用同一份现用资源清单。0.6.13 起三个宿主的默认发布包均不携带 Electron 二进制。保留 Electron 包的下载代码、版本与 checksums.json；排除该包的 dist 和 path.txt，不排除其他依赖的 dist。首次启动下载并校验，用户目录按版本缓存并跨宿主复用。0.6.12 起安装包仅保留 Claude 像素形象，其他形象独立分发。
 

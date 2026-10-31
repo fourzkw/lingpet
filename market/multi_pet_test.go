@@ -151,7 +151,7 @@ func TestMultiPetRepositoryIndependentValidationPublicationAndRetry(t *testing.T
 	}
 	status, raw = call(t, c, ts.URL, "POST", "/api/submissions", map[string]string{"repository": "alice/pet"})
 	json.Unmarshal(raw, &receipt)
-	if status != 202 || receipt.Created != 1 || receipt.Total != 3 {
+	if status != 202 || receipt.Created != 3 || receipt.Total != 3 {
 		t.Fatalf("retry recreated good entries: %d %s", status, raw)
 	}
 	entries, _ := os.ReadDir(filepath.Join(s.cfg.DataDir, "tmp"))
@@ -326,7 +326,7 @@ func TestMultiPetBatchIdempotencyHistoryAndIndependentUpdates(t *testing.T) {
 		s.validate(context.Background(), a)
 	}
 	status, body = call(t, c, ts.URL, "POST", "/api/submissions", map[string]string{"repository": "alice/pet"})
-	if status != 200 || !strings.Contains(string(body), `"created":0`) || strings.Contains(string(body), `"token"`) {
+	if status != 202 || !strings.Contains(string(body), `"refreshCount":2`) || strings.Contains(string(body), `"token"`) {
 		t.Fatalf("duplicate batch %d %s", status, body)
 	}
 	work := g.works[0]

@@ -3,7 +3,7 @@ import {readFile,rm} from 'node:fs/promises';
 import {CreationStore,safeId} from '../creation/store.js';
 import path from 'node:path';
 import {save} from '../creation/store.js';
-import {exportPetpack,installPetpack,LIMITS,resourceFiles,metadata} from './package.js';
+import {exportPetpack,installPetpack,readPetpack,LIMITS,resourceFiles,metadata} from './package.js';
 import {withInstallLock} from '../install-lock.js';
 import {STATES} from '../creation/store.js';
 import pngjs from 'pngjs';
@@ -14,6 +14,13 @@ import {CLAUDE_CLIPS} from '../../desktop/claude-actions.js';
 export const DEFAULT_MARKET='https://lingpet.fourzkw.top';
 function marketURL(raw){const u=new URL(raw);if(u.username||u.password||u.search||u.hash||u.pathname!=='/'||!['https:','http:'].includes(u.protocol))throw new Error('市场地址需为 HTTP 或 HTTPS 根地址');return u.origin;}
 export function githubDownloadURL(raw){const u=new URL(raw);if(u.protocol!=='https:'||u.username||u.password||u.port||!['github.com','release-assets.githubusercontent.com','objects.githubusercontent.com','github-releases.githubusercontent.com'].includes(u.hostname))throw new Error('只允许 GitHub Release 下载地址');return u;}
+const DOWNLOAD_ROUTES=[{name:'GitHub 直连',prefix:''},{name:'gh-proxy',prefix:'https://gh-proxy.com/'},{name:'ghfast',prefix:'https://ghfast.top/'}];
+function downloadURL(raw,route){
+ const u=new URL(raw);
+ if(route.prefix&&u.href.startsWith(route.prefix)){githubDownloadURL(u.href.slice(route.prefix.length));return u;}
+ return githubDownloadURL(raw);
+}
+function downloadError(error){return [error.message,error.cause?.code].filter(Boolean).join('（')+(error.cause?.code?'）':'');}
 async function bounded(res,max,onProgress){
  const length=Number(res.headers.get('content-length')),encoding=res.headers.get('content-encoding');
  if(length>max)throw new Error('响应体积超限');
@@ -24,18 +31,19 @@ async function bounded(res,max,onProgress){
  onProgress?.({transferred:n,total});return Buffer.concat(chunks);
 }
 export class MarketService{
- constructor(dir,{fetcher=fetch}={}){this.dir=dir;this.fetcher=fetcher;this.imageCache=new Map();this.imageBytes=0;this.installedCovers=new WeakMap();}
+ constructor(dir,{fetcher=fetch}={}){this.dir=dir;this.fetcher=fetcher;this.imageCache=new Map();this.imageRevisions=new Map();this.imageBytes=0;this.installedCovers=new WeakMap();}
+ rememberImages(url,records){for(const r of records){const key=url+'/'+r.id,revision=r.previewRevision||r.updatedAt||'';this.imageRevisions.delete(key);this.imageRevisions.set(key,revision);}while(this.imageRevisions.size>400)this.imageRevisions.delete(this.imageRevisions.keys().next().value);}
  async config(){try{return {url:marketURL(JSON.parse(await readFile(path.join(this.dir,'market.json'),'utf8')).url)};}catch(error){if(error.code==='ENOENT')return {url:DEFAULT_MARKET};throw error;}}
  async configure(url){const result={url:marketURL(url)};await save(path.join(this.dir,'market.json'),result);return result;}
  async api(route,body,origin){const url=origin??(await this.config()).url,res=await this.fetcher(url+route,{redirect:'error',signal:AbortSignal.timeout(route==='/api/submissions'?60000:15000),...(body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})});const value=JSON.parse((await bounded(res,8*1024*1024)).toString('utf8'));if(!res.ok)throw new Error(value.error||'市场请求失败');return value;}
- async list(query='',filters={}){const params=new URLSearchParams({q:String(query).slice(0,100)});for(const key of ['sort','style','interaction','recent'])if(filters?.[key])params.set(key,String(filters[key]));const {url}=await this.config(),value=await this.api('/api/pets?'+params,undefined,url);if(!Array.isArray(value))throw new Error('无效市场响应');const installed=await this.installed();return {url,pets:value.slice(0,200).map(r=>({...r,installed:installed.some(e=>(e.marketSources||[e.source]).some(s=>s?.market===url&&s?.versionId===r.id))}))};}
+ async list(query='',filters={}){const params=new URLSearchParams({q:String(query).slice(0,100)});for(const key of ['sort','style','interaction','recent'])if(filters?.[key])params.set(key,String(filters[key]));const {url}=await this.config(),value=await this.api('/api/pets?'+params,undefined,url);if(!Array.isArray(value))throw new Error('无效市场响应');this.rememberImages(url,value);const installed=await this.installed();return {url,pets:value.slice(0,200).map(r=>({...r,installed:installed.some(e=>(e.marketSources||[e.source]).some(s=>s?.market===url&&s?.versionId===r.id))}))};}
  versionId(value){if(typeof value!=='string'||!/^[a-f0-9]{48}$/.test(value))throw new Error('无效市场版本编号');return value;}
- async detail(versionId){this.versionId(versionId);const record=await this.api('/api/versions/'+versionId);if(record.id!==versionId||record.status!=='approved')throw new Error('该版本尚未上架');metadata(record.pet);if(record.preview)resourceFiles(record.preview);if(record.preview&&(record.preview.tileSize>128||record.preview.original?.tileSize>128))throw new Error('市场预览尺寸超限');return record;}
+ async detail(versionId){this.versionId(versionId);const {url}=await this.config(),record=await this.api('/api/versions/'+versionId,undefined,url);this.rememberImages(url,[record]);if(record.id!==versionId||record.status!=='approved')throw new Error('该版本尚未上架');metadata(record.pet);if(record.preview)resourceFiles(record.preview);if(record.preview&&(record.preview.tileSize>128||record.preview.original?.tileSize>128))throw new Error('市场预览尺寸超限');return record;}
  async image({versionId,cover=false,state='idle',variant='pixel'}){
   this.versionId(versionId);if(!STATES.includes(state)||!['original','pixel'].includes(variant))throw new Error('无效预览动作或显示版本');
-  const {url}=await this.config(),file=cover?'cover.png':(variant==='original'?'original/':'')+'sprites/'+state+'.png',key=url+'/'+versionId+'/'+file;
+  const {url}=await this.config(),file=cover?'cover.png':(variant==='original'?'original/':'')+'sprites/'+state+'.png',revision=this.imageRevisions.get(url+'/'+versionId)||'',key=url+'/'+versionId+'/'+file+'?v='+encodeURIComponent(revision);
   if(this.imageCache.has(key)){const value=this.imageCache.get(key);this.imageCache.delete(key);this.imageCache.set(key,value);return value;}
-  const res=await this.fetcher(url+'/api/versions/'+versionId+'/preview/'+file,{redirect:'error',signal:AbortSignal.timeout(15000)});if(!res.ok)throw new Error('预览图片暂不可用');
+  const res=await this.fetcher(url+'/api/versions/'+versionId+'/preview/'+file+(revision?'?v='+encodeURIComponent(revision):''),{redirect:'error',signal:AbortSignal.timeout(15000)});if(!res.ok)throw new Error('预览图片暂不可用');
   const bytes=await bounded(res,8*1024*1024),maxPixels=cover?1024*1024:2*1024*1024;
   if(bytes.length<33||bytes.toString('hex',0,8)!=='89504e470d0a1a0a'||!bytes.readUInt32BE(16)||!bytes.readUInt32BE(20)||bytes.readUInt32BE(16)*bytes.readUInt32BE(20)>maxPixels)throw new Error('预览图片格式或尺寸无效');
   const image=pngjs.PNG.sync.read(bytes,{checkCRC:true});let output=bytes;
@@ -57,16 +65,38 @@ export class MarketService{
  }
  async lookup({repository,id,token}){if(repository!==undefined){if(typeof repository!=='string'||!repository.trim()||repository.length>200)throw new Error('请填写有效的 GitHub 仓库链接');const value=await this.api('/api/submissions/lookup',{repository:repository.trim()});if(!Array.isArray(value.records))throw new Error('无效投稿查询结果');return value;}this.versionId(id);if(typeof token!=='string'||!/^[a-f0-9]{48}$/.test(token))throw new Error('无效投稿凭证');const {url}=await this.config(),record=await this.api('/api/submissions/lookup',{id,token},url);if(record.id!==id)throw new Error('无效投稿查询结果');const receipt={id,token,url,repository:record.repository,tag:record.tag,assetName:record.assetName,createdAt:new Date().toISOString()};let warning;try{await this.rememberReceipt(receipt);}catch{warning='查询成功，但本机凭证保存失败。请立即保存凭证文件。';}return {record,receipt,warning};}
  async receiptForExport({id,token,url}){this.versionId(id);if(typeof token!=='string'||!/^[a-f0-9]{48}$/.test(token))throw new Error('无效投稿凭证');url=marketURL(url);return (await this.receipts()).find(r=>r.id===id&&r.token===token&&r.url===url)||{id,token,url};}
+ async download(record,report){
+  const original=githubDownloadURL(record.url),failures=[];
+  for(const route of DOWNLOAD_ROUTES){
+   report({phase:'connecting',route:route.name,transferred:0,total:null});
+   try{
+    let url=new URL(route.prefix+original.href),res;
+    const signal=AbortSignal.timeout(180000);
+    for(let i=0;i<6;i++){
+     const connection=new AbortController(),timer=setTimeout(()=>connection.abort(new Error('连接超时（20秒）')),20000);
+     try{res=await this.fetcher(url,{redirect:'manual',signal:AbortSignal.any([signal,connection.signal])});}finally{clearTimeout(timer);}
+     if(![301,302,303,307,308].includes(res.status))break;
+     await res.body?.cancel();
+     const location=res.headers.get('location');if(!location)throw new Error('下载重定向缺少地址');
+     url=downloadURL(new URL(location,url).href,route);
+    }
+    if(res.status!==200){await res.body?.cancel();throw new Error('GitHub 下载失败（HTTP '+res.status+'）或重定向过多');}
+    const bytes=await bounded(res,LIMITS.package,value=>report({phase:'downloading',route:route.name,...value}));
+    report({phase:'verifying',route:route.name,transferred:bytes.length,total:bytes.length});
+    // Reject proxy error pages and mismatched packages before touching the local library.
+    const pack=await readPetpack(bytes);
+    if(pack.pet.id!==record.pet.id||pack.pet.version!==record.pet.version)throw new Error('资源包作品 ID 或版本与市场条目不符');
+    return bytes;
+   }catch(error){failures.push(route.name+'：'+downloadError(error));}
+  }
+  throw new Error('资源包下载失败，所有下载线路均不可用。'+failures.join('；')+'。可从 GitHub Release 手动下载 .petpack 后导入。');
+ }
  async install(versionId,{onProgress}={}){
   const report=value=>{try{onProgress?.(value);}catch{/* A closed progress view must not break installation. */}};
   report({phase:'connecting',transferred:0,total:null});
   try{
-  if(!/^[a-f0-9]{48}$/.test(versionId))throw new Error('无效市场版本编号');const marketOrigin=(await this.config()).url,record=await this.api('/api/versions/'+versionId+'/install',undefined,marketOrigin);if(!record.pet||typeof record.pet.id!=='string'||!/^[a-z0-9][a-z0-9-]{2,63}$/.test(record.pet.id)||typeof record.pet.version!=='string'||!/^\d+\.\d+\.\d+$/.test(record.pet.version))throw new Error('无效市场作品记录');let url=githubDownloadURL(record.url),res;
-  for(let i=0;i<6;i++){res=await this.fetcher(url,{redirect:'manual',signal:AbortSignal.timeout(180000)});if([301,302,303,307,308].includes(res.status)){await res.body?.cancel();url=githubDownloadURL(new URL(res.headers.get('location'),url).href);continue;}break;}
-  // GitHub attachments may be replaced; validate the downloaded package and its identity.
-  if(res.status!==200)throw new Error('GitHub 下载失败或重定向过多');
-  const bytes=await bounded(res,LIMITS.package,value=>report({phase:'downloading',...value}));
-  report({phase:'verifying',transferred:bytes.length,total:bytes.length});
+  if(!/^[a-f0-9]{48}$/.test(versionId))throw new Error('无效市场版本编号');const marketOrigin=(await this.config()).url,record=await this.api('/api/versions/'+versionId+'/install',undefined,marketOrigin);if(!record.pet||typeof record.pet.id!=='string'||!/^[a-z0-9][a-z0-9-]{2,63}$/.test(record.pet.id)||typeof record.pet.version!=='string'||!/^\d+\.\d+\.\d+$/.test(record.pet.version))throw new Error('无效市场作品记录');
+  const bytes=await this.download(record,report);
   const installed=await installPetpack(this.dir,bytes,{expectedIdentity:record.pet,source:{market:marketOrigin,versionId,github:record.source}});
   report({phase:'complete',transferred:bytes.length,total:bytes.length});return installed;
   }catch(error){report({phase:'error'});throw error;}

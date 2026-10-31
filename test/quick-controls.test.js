@@ -11,7 +11,7 @@ test('popup model exposes inline size separately and retains scoped actions with
   assert.ok(!JSON.stringify(items).includes('click'));
   actions.get('character-claude')();assert.equal(clicked.character,'claude');assert.equal(first.scale,1);
   actions.get('always-on-top')({checked:false});assert.equal(clicked.alwaysOnTop,false);assert.equal(first.alwaysOnTop,true);
-  const follow=items.find(item=>item.id==='follow').children[2];
+  const follow=items.find(item=>item.id==='follow').children.find(item=>item.label==='仅跟随 Cursor');
   actions.get(follow.id)();assert.deepEqual(clicked.follow,{mode:'source',source:'cursor'});
   assert.equal(actions.has(items[0].id),false,'disabled header cannot execute an action');
 });

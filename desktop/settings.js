@@ -52,7 +52,7 @@ function renderAppearances(settings){
   $('variantHint').textContent=skin.variants.length===1?(skin.variants[0]==='original'?'此形象目前仅提供原图版。':'此形象目前仅提供像素版。'):settings.variant==='original'?'保留原始素材的细节、颜色和透明边缘。':'使用统一色板与像素边缘；切换版本保留当前形象。';
 }
 const sourceName=source=>source==='codex'?'Codex':source==='cursor'?'Cursor':'DSH';
-const followLabel=follow=>follow?.mode==='source'?sourceName(follow.source)+' 自动跟随':follow?.mode==='session'?sourceName(follow.source)+' · 指定会话':'全局自动跟随';
+const followLabel=follow=>follow?.mode==='none'?'不跟随会话':follow?.mode==='source'?sourceName(follow.source)+' 自动跟随':follow?.mode==='session'?sourceName(follow.source)+' · 指定会话':'全局自动跟随';
 function renderPetList(value){
   const list=$('petList');list.replaceChildren();$('petCount').textContent=String((value.pets||[]).length);
   if(!value.pets?.length){const empty=document.createElement('p');empty.className='empty';empty.textContent='还没有桌宠，点击下方新增。';list.append(empty);return;}
@@ -91,9 +91,9 @@ function update(value){
   for(const row of $('petList').children){const selected=row.dataset.petId===value.activePetId;row.classList.toggle('selected',selected);row.querySelector('[data-select-pet]')?.setAttribute('aria-pressed',String(selected));}
   $('petWorkspace').hidden=!value.activePetId;$('noPet').hidden=Boolean(value.activePetId);
   if(changedPet||document.activeElement!==$('petName'))$('petName').value=value.settings.name||'';
-  const follow=value.settings.follow||{mode:'global'};
+  const follow=value.settings.follow||{mode:'none'};
   if(!pendingSessionSelection)$('followMode').value=follow.mode==='source'?follow.source:follow.mode;
-  $('followDescription').textContent=pendingSessionSelection?'尚未绑定：请在下方选择一个会话，或切回自动跟随。':follow.mode==='session'?'已固定：'+sourceName(follow.source)+' · '+follow.sessionId:follow.mode==='source'?'仅响应 '+sourceName(follow.source)+' 的会话状态。':'自动响应所有来源的会话，优先提示需要你处理的状态。';
+  $('followDescription').textContent=pendingSessionSelection?'尚未绑定：请在下方选择一个会话，或切回自动跟随。':follow.mode==='none'?'保持待机与互动，不响应 Agent 会话状态。'+(follow.autoConnect?'首次接入 Agent 后自动切换为跟随该来源。':''):follow.mode==='session'?'已固定：'+sourceName(follow.source)+' · '+follow.sessionId:follow.mode==='source'?'仅响应 '+sourceName(follow.source)+' 的会话状态。':'自动响应所有来源的会话，优先提示需要你处理的状态。';
   for(const element of document.querySelectorAll('[data-requires-pet]'))element.disabled=!value.activePetId;
   extras?.render();
   onboarding?.render();
@@ -104,7 +104,7 @@ function update(value){
   $('connection').querySelector('span').textContent=value.instances>0?`${sources.join(' / ')||'Agent'} 已连接 · ${value.instances}`:'等待 Agent';
   $('currentState').dataset.state=value.current.state;
   $('currentState').textContent=(value.current.demo?'演示 · ':'')+value.labels[value.current.state];
-  $('currentSource').textContent=value.current.demo?'动作试映，不影响真实会话':value.current.sessionId?`${sourceName(value.current.source)} · 会话 ${value.current.sessionId.slice(0,18)}${value.current.connected?'':' · 连接已断开'}`:'启用 DSH、Cursor 或 Codex 插件后自动同步状态';
+  $('currentSource').textContent=value.current.demo?'动作试映，不影响真实会话':follow.mode==='none'?'不跟随会话 · 可点击或摸头互动':value.current.sessionId?`${sourceName(value.current.source)} · 会话 ${value.current.sessionId.slice(0,18)}${value.current.connected?'':' · 连接已断开'}`:'启用 DSH、Cursor 或 Codex 插件后自动同步状态';
   const skin=appearanceInfo(value.settings);$('previewKind').textContent=skin.name+' / '+(value.settings.variant==='original'?'原图':'PIXEL '+skin.pixelSize);
   $('demoHint').textContent='临时切换桌宠动作 · 不操作 Agent';
   for(const button of document.querySelectorAll('[data-character]')){const selected=button.dataset.character===value.settings.character;button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));}
@@ -159,7 +159,7 @@ $('followMode').onchange=()=>{
   const mode=$('followMode').value;
   pendingSessionSelection=mode==='session';
   if(mode==='session'){toast('点击下方会话，固定当前桌宠跟随该会话。');update(data);return;}
-  void change({follow:mode==='global'?{mode:'global'}:{mode:'source',source:mode}});
+  void change({follow:['none','global'].includes(mode)?{mode}:{mode:'source',source:mode}});
 };
 for(const button of document.querySelectorAll('[data-character]'))button.onclick=()=>change({character:button.dataset.character});
 $('scale').oninput=()=>{scaleEditing=true;renderScale(Number($('scale').value));};

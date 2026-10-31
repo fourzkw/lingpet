@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"strings"
@@ -7,7 +7,7 @@ import (
 
 func TestBrandAndThemeAssetsEmbedded(t *testing.T) {
 	_, ts, c := fixtureServer(t)
-	for _, route := range []string{"/brand.svg", "/favicon.ico", "/apple-touch-icon.png", "/site.css", "/theme.js", "/theme-tokens.css"} {
+	for _, route := range []string{"/brand.svg", "/favicon.ico", "/apple-touch-icon.png", "/site.css", "/refine.css", "/theme.js", "/theme-tokens.css"} {
 		status, body := call(t, c, ts.URL, "GET", route, nil)
 		if status != 200 || len(body) < 100 || strings.Contains(string(body), "<!doctype html>") {
 			t.Fatal("brand asset unavailable", route, status)
@@ -22,3 +22,4 @@ func TestBrandAndThemeAssetsEmbedded(t *testing.T) {
 		}
 	}
 }
+

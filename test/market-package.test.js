@@ -30,6 +30,73 @@ test('market download reports streamed bytes and separates verification from com
  assert.deepEqual(progress.slice(-2).map(p=>p.phase),['verifying','complete']);
 });
 
+test('market download falls back from connection and HTTP failures and reports the active proxy',async t=>{
+ const dir=await data(t),bytes=await fixturePetpack(),calls=[],progress=[],original='https://github.com/alice/pet/releases/download/v1/pet.petpack';
+ const record={pet:{id:'fixture-pet',version:'1.0.0'},url:original};
+ const service=new MarketService(dir,{fetcher:async(url,options)=>{
+  if(String(url).includes('/install'))return new Response(JSON.stringify(record));
+  calls.push(String(url));assert.equal(options.redirect,'manual');assert.equal(options.headers,undefined);
+  if(calls.length===1)throw new TypeError('fetch failed',{cause:{code:'ETIMEDOUT'}});
+  if(calls.length===2)return new Response('busy',{status:503});
+  return new Response(bytes);
+ }});
+ assert.equal((await service.install('f'.repeat(48),{onProgress:p=>progress.push(p)})).installed,true);
+ assert.deepEqual(calls,[original,'https://gh-proxy.com/'+original,'https://ghfast.top/'+original]);
+ assert.deepEqual(progress.filter(p=>p.phase==='connecting'&&p.route).map(p=>p.route),['GitHub 直连','gh-proxy','ghfast']);
+ assert.ok(progress.some(p=>p.phase==='downloading'&&p.route==='ghfast'));
+});
+
+test('market download retries interrupted streams and proxy error pages before installing',async t=>{
+ const dir=await data(t),bytes=await fixturePetpack(),record={pet:{id:'fixture-pet',version:'1.0.0'},url:'https://github.com/alice/pet/releases/download/v1/pet.petpack'};let calls=0;
+ const service=new MarketService(dir,{fetcher:async url=>{
+  if(String(url).includes('/install'))return new Response(JSON.stringify(record));
+  calls++;
+  if(calls===1)return new Response(new ReadableStream({start(c){c.enqueue(bytes.subarray(0,10));c.error(new Error('connection reset'));}}));
+  if(calls===2)return new Response('<html>proxy error</html>');
+  return new Response(bytes);
+ }});
+ assert.equal((await service.install('f'.repeat(48))).installed,true);assert.equal(calls,3);
+});
+
+test('market download stops after direct success and allows validated GitHub asset redirects',async t=>{
+ const dir=await data(t),bytes=await fixturePetpack(),calls=[];
+ const service=new MarketService(dir,{fetcher:async url=>{
+  if(String(url).includes('/install'))return new Response(JSON.stringify({pet:{id:'fixture-pet',version:'1.0.0'},url:'https://github.com/alice/pet/releases/download/v1/pet.petpack'}));
+  calls.push(String(url));
+  if(calls.length===1)return new Response(null,{status:302,headers:{location:'https://release-assets.githubusercontent.com/asset?token=test'}});
+  return new Response(bytes);
+ }});
+ assert.equal((await service.install('f'.repeat(48))).installed,true);assert.equal(calls.length,2);
+ assert.ok(calls.every(url=>!url.includes('gh-proxy')&&!url.includes('ghfast')));
+});
+
+test('market proxy redirects stay on approved download targets and preserve route errors',async t=>{
+ const dir=await data(t),calls=[],record={pet:{id:'fixture-pet',version:'1.0.0'},url:'https://github.com/alice/pet/releases/download/v1/pet.petpack'};
+ const service=new MarketService(dir,{fetcher:async url=>{
+  if(String(url).includes('/install'))return new Response(JSON.stringify(record));
+  calls.push(String(url));
+  if(calls.length===1)throw new TypeError('fetch failed',{cause:{code:'ENOTFOUND'}});
+  return new Response(null,{status:302,headers:{location:String(url).startsWith('https://gh-proxy.com/')?'https://gh-proxy.com/https://127.0.0.1/private':'https://evil.example/asset'}});
+ }});
+ await assert.rejects(service.install('f'.repeat(48)),error=>{
+  for(const text of ['所有下载线路','GitHub 直连','ENOTFOUND','gh-proxy','ghfast','.petpack'])assert.ok(error.message.includes(text));return true;
+ });
+ assert.equal(calls.length,3);assert.equal((await service.installed()).length,0);
+});
+
+test('market proxy supports relative redirects only within wrapped GitHub URLs',async t=>{
+ const dir=await data(t),bytes=await fixturePetpack(),calls=[];
+ const service=new MarketService(dir,{fetcher:async url=>{
+  if(String(url).includes('/install'))return new Response(JSON.stringify({pet:{id:'fixture-pet',version:'1.0.0'},url:'https://github.com/alice/pet/releases/download/v1/pet.petpack'}));
+  calls.push(String(url));
+  if(calls.length===1)throw Error('offline');
+  if(calls.length===2)return new Response(null,{status:302,headers:{location:'other.petpack'}});
+  return new Response(bytes);
+ }});
+ assert.equal((await service.install('f'.repeat(48))).installed,true);
+ assert.equal(calls[2],'https://gh-proxy.com/https://github.com/alice/pet/releases/download/v1/other.petpack');
+});
+
 test('market download keeps unknown lengths indeterminate and reports verification failure',async t=>{
  const dir=await data(t),id='e'.repeat(48),progress=[];let bytes=await fixturePetpack();
  const record={pet:{id:'fixture-pet',version:'1.0.0'},size:999999,url:'https://github.com/alice/pet/releases/download/v1/pet.petpack'};

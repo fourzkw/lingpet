@@ -13,6 +13,14 @@ output/
 __pycache__/
 *.pyc
 
+# Local UI probes and one-off audits
+.probe-dir/
+test-dir-probe/
+tmp-shots/
+scripts/tmp-audit/
+scripts/_probe-*.cjs
+**/_probe.tmp
+
 # Market service runtime and local credentials
 market/data/
 market/market

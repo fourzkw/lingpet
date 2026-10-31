@@ -207,6 +207,7 @@ export async function launchDesktop(dir){
   async function reloadAppearances(){customCharacters=await new CreationStore(dir).list('characters');customAppearances=await loadCustomAppearances(dir);setCustomAppearances(customAppearances,customCharacters);resolveAppearanceAliases(registry.pets,customAppearances);await save();broadcast();return {synced:true,count:customAppearances.length};}
   ipcMain.handle('pet:system',async(event,body)=>{
     if(!isWindowSender(event,settingsWindow))throw new Error('仅工作台可访问应用管理');
+    if(body?.action==='comfy-guide'){shell.showItemInFolder(path.join(PACKAGE_ROOT,'docs/comfyui-setup.md'));return {opened:true};}
     if(body?.action==='comfy-config')return new ComfySettings(dir).get();
     if(body?.action==='comfy-configure')return new ComfySettings(dir).configure(body.values);
     if(body?.action==='comfy-inspect')return new CreationService(dir).environment({action:'inspect'});
@@ -270,7 +271,10 @@ export async function launchDesktop(dir){
     }
     if(!desktop)throw Error('请使用独立本体安装版管理接入');
     if(body?.action==='plan'){const plan=await integrations.plan(body.target);return {steps:plan.steps,changes:plan.changes.map(change=>({file:change.file})),source:plan.source};}
-    if(body?.action==='install')return integrations.install(body.target);
+    if(body?.action==='install'){
+      const petId=activePetId,result=await integrations.install(body.target);
+      registry.connectAgent(result.source,{petId,installed:true});return result;
+    }
     if(body?.action==='inspect')return integrations.inspect(body.id);
     if(body?.action==='remove')return integrations.remove(body.id);
     throw Error('未知接入操作');
@@ -348,7 +352,11 @@ export async function launchDesktop(dir){
   ]));}
   function quitAll(){if(quitting)return;writeFileSync(path.join(dir,'runtime.paused'),'用户已退出全部桌宠');quitting=true;setTimeout(async()=>{await saveQueue.catch(()=>{});await integrationGateway?.close();await server?.close();app.quit();},50);}
   registry.on('change',()=>{syncWindows();trayMenu();void save();broadcast();});
-  store.on('change',broadcast);syncWindows();await save();
+  store.on('change',()=>{
+    const connection=[...store.connections.values()].find(c=>c.channel==='events'&&['dsh','cursor','codex'].includes(c.source));
+    if(connection)registry.connectAgent(connection.source);
+    broadcast();
+  });syncWindows();await save();
   tray=new Tray(nativeImage.createFromPath(path.join(PACKAGE_ROOT,'assets/tray.png')));tray.setToolTip('灵伴 · 多桌宠');trayMenu();tray.on('double-click',()=>openSettings());
   let confirming=false,lastConfirmation=0;
   const tick=setInterval(()=>{store.tick();broadcast();if(!desktop&&!confirming&&Date.now()-lastConfirmation>5000){confirming=true;lastConfirmation=Date.now();void confirmRunningSharedRuntime(dir).catch(error=>recordError('运行版本同步',error)).finally(()=>{confirming=false;});}},1000);
@@ -384,6 +392,7 @@ export async function launchDesktop(dir){
       return {running:true,pets:petList(),runtime:{phase:'ready',message:'灵伴本体已内置运行环境'},state:store.current().state};
     }};
     integrationGateway=await startIntegrationGateway({manager:integrations,store,control,creation:new CreationService(dir)});
+    void integrations.sync().then(results=>{for(const result of results)if(result.error)recordError('接入自动更新',result.error);}).catch(error=>recordError('接入自动更新',error));
   }else await confirmRunningSharedRuntime(dir);
   app.on('second-instance',(_event,args)=>{if(args.includes('--dashboard'))openSettings();else for(const pet of registry.pets)registry.update(pet.id,visibilityPatch(true));});
   if(process.argv.includes('--dashboard')||process.argv.includes('--demo')||settingsStore.recovery)openSettings();

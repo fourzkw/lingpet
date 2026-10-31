@@ -9,12 +9,16 @@ import {createAdapterPackage,hookCommand} from './packages.js';
 import {withInstallLock} from '../install-lock.js';
 import {CURSOR_HOOKS} from '../cursor-observer.js';
 import {removeCursorHooks} from '../cursor-hook-config.js';
-import {compareVersions} from '../shared-runtime.js';
+import {adapterRelease,adapterFingerprint} from './release.js';
 import {CODEX_INSTALL_HINT} from './guidance.js';
 
 const run=promisify(execFile),sources=['dsh','cursor','codex'];
 export class IntegrationManager{
-  constructor({dir,root,bridge,version,home=os.homedir(),execute=run}){Object.assign(this,{dir,root,bridge,version,home,execute});this.base=path.join(dir,'integrations');this.file=path.join(this.base,'registry.json');this.live=new Map();}
+  constructor({dir,root,bridge,version,home=os.homedir(),execute=run}){Object.assign(this,{dir,root,bridge,version,home,execute});this.base=path.join(dir,'integrations');this.file=path.join(this.base,'registry.json');this.live=new Map();this.releases=new Map();this.catalog=new Map();this.syncState={running:false};this.syncPromise=null;}
+  async releaseFor(source){
+    if(!this.releases.has(source))this.releases.set(source,adapterRelease({source,root:this.root,bridge:this.bridge,dir:this.dir,base:this.base}).catch(error=>{this.releases.delete(source);throw error;}));
+    const release=await this.releases.get(source);this.catalog.set(source,release);return release;
+  }
   async records(){const data=await json(this.file,{format:1,items:[]});if(data.format!==1||!Array.isArray(data.items))throw Error('Agent 接入记录损坏，请从备份恢复');return data.items;}
   async save(items){await atomic(this.file,JSON.stringify({format:1,items},null,2));}
   async discover(){
@@ -26,7 +30,8 @@ export class IntegrationManager{
       for(const candidate of candidates)try{await access(candidate);executable=candidate;break;}catch{}
       result.push({source,config,detected,executable});
     }
-    return {targets:result,items:records.map(item=>this.public(item))};
+    for(const source of new Set(records.filter(item=>item.state==='installed').map(item=>item.source)))try{await this.releaseFor(source);}catch{}
+    return {targets:result,items:records.map(item=>this.public(item)),sync:{...this.syncState}};
   }
   async plan({source,config,executable,profile='web'}){
     if(!sources.includes(source))throw Error('不支持的 Agent');
@@ -39,8 +44,9 @@ export class IntegrationManager{
     if(source!=='cursor'&&(!executable||!path.isAbsolute(executable)||!['.exe','.cmd','.bat'].includes(path.extname(executable).toLowerCase())))throw Error('请选择宿主命令的 exe、cmd 或 bat 文件');
     if(source==='dsh'&&!/^[a-zA-Z0-9_-]{1,64}$/.test(profile))throw Error('无效 DSH profile');
     const items=await this.records(),existing=items.find(item=>item.source===source&&path.resolve(item.config).toLowerCase()===path.resolve(config).toLowerCase()&&(source!=='dsh'||item.profile===profile));
-    const id=existing?.id||randomUUID(),packageRoot=path.join(this.base,'packages',id,this.version+'-'+randomUUID());
-    const plan={id,source,config:path.resolve(config),executable,profile,packageRoot,version:this.version,previous:existing||null};
+    const release=await this.releaseFor(source);
+    const id=existing?.id||randomUUID(),packageRoot=path.join(this.base,'packages',id,release.version+'-'+randomUUID());
+    const plan={id,source,config:path.resolve(config),executable,profile,packageRoot,version:release.version,adapterFingerprint:release.fingerprint,bridgeProtocol:release.bridgeProtocol,previous:existing||null};
     if(source==='cursor'){
       const file=path.join(config,'hooks.json'),before=await optional(file),raw=before?JSON.parse(before.replace(/^\uFEFF/,'')):{},value=removeCursorHooks(raw,path.join(config,'plugins/local/board-pet')).value;
       if(value.version!==undefined&&value.version!==1||value.hooks!==undefined&&(!value.hooks||typeof value.hooks!=='object'||Array.isArray(value.hooks)))throw Error('Cursor Hooks 格式不兼容');
@@ -74,12 +80,13 @@ export class IntegrationManager{
     }
     return execute(item.executable,args,{env,windowsHide:true,timeout:60000,maxBuffer:1024*1024});
   }
-  async install(input){
+  async install(input,{automatic=false,alreadyLocked=false}={}){
     await mkdir(this.base,{recursive:true});
-    return withInstallLock(path.join(this.base,'install.lock'),async()=>{
+    const operation=async()=>{
       const plan=await this.plan(input),items=await this.records(),transaction=path.join(this.base,'transactions',randomUUID());await mkdir(transaction,{recursive:true});
       const token=plan.previous?.token||randomBytes(32).toString('hex'),controlToken=plan.previous?.controlToken||randomBytes(32).toString('hex');
-      const item={id:plan.id,source:plan.source,config:plan.config,executable:plan.executable,profile:plan.profile,packageRoot:plan.packageRoot,version:this.version,token,controlToken,enabled:false,state:'installing',nextSteps:plan.steps.at(-1),transaction};
+      const item={id:plan.id,source:plan.source,config:plan.config,executable:plan.executable,profile:plan.profile,packageRoot:plan.packageRoot,version:plan.version,coreVersion:this.version,adapterVersion:plan.version,adapterFingerprint:plan.adapterFingerprint,bridgeProtocol:plan.bridgeProtocol,token,controlToken,enabled:automatic&&Boolean(plan.previous?.enabled),state:'installing',nextSteps:plan.steps.at(-1),transaction};
+      if(automatic)item.autoUpdate={status:'updating',version:item.version,attemptFingerprint:plan.adapterFingerprint,updatedAt:Date.now()};
       const checkpoint=async()=>{await atomic(path.join(transaction,'transaction.json'),JSON.stringify({plan,state:item.state},null,2));await this.save([...items.filter(row=>row.id!==item.id),item]);};
       await checkpoint();
       try{
@@ -90,13 +97,15 @@ export class IntegrationManager{
           await this.installCodex(item,plan.previous);
         }else if(item.source==='dsh')await this.executeHost(item,['plugin','--profile',item.profile,'add','file:'+item.packageRoot]);
         await atomic(path.join(this.base,'clients',item.id+'.json'),JSON.stringify({format:1,id:item.id,source:item.source,token,controlToken,dir:this.dir}));
-        item.enabled=true;item.state='installed';await checkpoint();return this.public(item);
+        item.enabled=true;item.state='installed';if(automatic)item.autoUpdate={status:'updated',version:item.version,attemptFingerprint:plan.adapterFingerprint,updatedAt:Date.now()};await checkpoint();return this.public(item);
       }catch(error){
         item.state='partial';item.error=String(error.message).slice(0,3000);
-        for(const change of plan.changes)if(await optional(change.file)===change.after)await atomic(change.file,change.before??'{}\n');
+        for(const change of plan.changes)try{if(await optional(change.file)===change.after)await atomic(change.file,change.before??'{}\n');}catch(restoreError){item.error+='；配置恢复未完成：'+restoreError.message;}
+        if(automatic&&plan.previous){const previous={...plan.previous,autoUpdate:{status:'failed',version:plan.version,attemptFingerprint:plan.adapterFingerprint,error:item.error,updatedAt:Date.now()}};await this.save([...items.filter(row=>row.id!==item.id),previous]);throw Error('自动更新未完成，保留原接入：'+item.error);}
         await checkpoint();throw Error('接入未完成：'+item.error+'。记录已保留，可修复或卸载。');
       }
-    });
+    };
+    return alreadyLocked?operation():withInstallLock(path.join(this.base,'install.lock'),operation);
   }
   async installCodex(item,previous){
     const name='lingpet-'+item.id,selector='board-pet@'+name;
@@ -123,9 +132,60 @@ export class IntegrationManager{
     }
   }
   public({token,controlToken,...item}){
-    let updateAvailable=false;
-    if(item.state==='installed')try{updateAvailable=compareVersions(item.version,this.version)<0;}catch{}
-    return {...item,updateAvailable,availableVersion:this.version,connection:this.live.get(item.id)||null};
+    const release=this.catalog.get(item.source);
+    const updateAvailable=item.state==='installed'&&Boolean(release)&&item.adapterFingerprint!==release.fingerprint;
+    return {...item,version:item.adapterVersion||item.version,updateAvailable,availableVersion:release?.version||item.adapterVersion||item.version,connection:this.live.get(item.id)||null};
+  }
+  sync(){
+    if(this.syncPromise)return this.syncPromise;
+    this.syncState={running:true};
+    this.syncPromise=this.syncInstalled().finally(()=>{this.syncState={running:false};this.syncPromise=null;});
+    return this.syncPromise;
+  }
+  async syncInstalled(){
+    const results=[];
+    // An interrupted automatic update must not strand an authorized record in
+    // "installing" forever. Recover its previous record without rerunning a CLI.
+    await withInstallLock(path.join(this.base,'install.lock'),async()=>{
+      const items=await this.records();let changed=false;
+      for(let index=0;index<items.length;index++){
+        const item=items[index];if(item.state!=='installing'||item.autoUpdate?.status!=='updating')continue;
+        const transaction=await json(path.join(item.transaction,'transaction.json'),null),previous=transaction?.plan?.previous;
+        if(previous?.id!==item.id||previous.source!==item.source||previous.config!==item.config)continue;
+        for(const change of transaction.plan.changes||[])try{if(await optional(change.file)===change.after)await atomic(change.file,change.before??'{}\n');}catch{}
+        items[index]={...previous,autoUpdate:{...item.autoUpdate,status:'failed',error:'上次自动更新中断，已保留原接入记录；请检查宿主并手动更新接入。'}};changed=true;
+      }
+      if(changed)await this.save(items);
+    });
+    for(const initial of await this.records()){
+      if(initial.state!=='installed'||!initial.enabled)continue;
+      try{await withInstallLock(path.join(this.base,'install.lock'),async()=>{
+        const items=await this.records(),item=items.find(row=>row.id===initial.id);
+        if(!item||item.state!=='installed'||!item.enabled)return;
+        this.syncState={running:true,id:item.id,source:item.source};
+        const release=await this.releaseFor(item.source);
+        if(item.adapterFingerprint===release.fingerprint)return;
+        // Migrate matching legacy packages without reinstalling them in the host.
+        let fingerprint;try{fingerprint=await adapterFingerprint(item.packageRoot,{id:item.id});}catch{}
+        if(fingerprint===release.fingerprint){
+          Object.assign(item,{adapterVersion:release.version,adapterFingerprint:release.fingerprint,bridgeProtocol:release.bridgeProtocol});await this.save(items);return;
+        }
+        if(item.autoUpdate?.attemptFingerprint===release.fingerprint){
+          if(item.autoUpdate.status==='updating'){item.autoUpdate={...item.autoUpdate,status:'failed',error:'上次自动更新中断，请手动更新接入重试。'};await this.save(items);}
+          return;
+        }
+        // Persist before invoking a host; a restart must not loop failed installs.
+        item.autoUpdate={status:'updating',version:release.version,attemptFingerprint:release.fingerprint,updatedAt:Date.now()};await this.save(items);
+        try{await this.install(item,{automatic:true,alreadyLocked:true});}
+        catch(error){
+          const latest=await this.records(),current=latest.find(row=>row.id===item.id);
+          if(current?.autoUpdate?.status==='updating'){current.autoUpdate={...current.autoUpdate,status:'failed',error:String(error.message).slice(0,3000)};await this.save(latest);}
+          throw error;
+        }
+        results.push({id:item.id,updated:true});
+      });}catch(error){results.push({id:initial.id,error:String(error.message).slice(0,3000)});}
+    }
+    return results;
   }
   async authorize(token,control=false){return (await this.records()).find(item=>item.enabled&&(control?item.controlToken:item.token)===token);}
   note(id,details){this.live.set(id,{...this.live.get(id),...details,updatedAt:Date.now()});}

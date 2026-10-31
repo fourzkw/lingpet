@@ -1,6 +1,6 @@
 {
   "name": "lingpet",
-  "version": "0.7.26",
+  "version": "0.7.32",
   "boardPetProtocol": 1,
   "description": "灵伴 LingPet：跟随 AI 会话的桌面伙伴，支持形象创作与多桌宠管理",
   "type": "module",

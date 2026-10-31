@@ -22,7 +22,7 @@ test('menu represents a fixed session and offers demo recovery only during a dem
   const pet=new PetRegistry({}).pets[0];pet.follow={mode:'session',source:'codex',scopeId:'local',sessionId:'a'};let ended=0,patch;
   const menu=petMenuTemplate(pet,{demo:true,update:value=>patch=value,endDemo:()=>ended++,openSettings:()=>{}});
   assert.ok(menu.find(item=>item.id==='follow').submenu.some(item=>item.checked&&item.label==='已固定当前会话'));
-  menu.find(item=>item.id==='follow').submenu[0].click();assert.deepEqual(patch,{follow:{mode:'global'}});
+  menu.find(item=>item.id==='follow').submenu.find(item=>item.label==='自动跟随所有来源').click();assert.deepEqual(patch,{follow:{mode:'global'}});
   menu.find(item=>item.id==='end-demo').click();assert.equal(ended,1);
   assert.ok(!petMenuTemplate(pet,{update:()=>{}}).some(item=>item.id==='end-demo'));
 });

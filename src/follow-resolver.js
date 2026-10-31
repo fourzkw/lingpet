@@ -1,6 +1,7 @@
 import {connectionStatus,HOSTS} from './connection-status.js';
 export function bindingFor(session){return {mode:'session',source:session.source||'dsh',scopeId:session.scopeId||session.instanceId,sessionId:session.sessionId};}
 export function resolveFollow(store,follow={mode:'global'},previousKey=null,{doneMs=1800}={}){
+  if(follow.mode==='none')return {state:'idle',label:'不跟随会话',connected:false,key:null,sessionId:null};
   const all=[...store.sessions.values()],now=store.now();
   let target;
   const missing=(state,label)=>({state,label,connected:false,key:null,sessionId:null});

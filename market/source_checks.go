@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"sort"
@@ -89,6 +90,11 @@ func (s *Server) checkNextSource(ctx context.Context, all []Record, now time.Tim
 		if err == nil && t.record.Source != nil && asset.RepoID != t.record.Source.RepoID {
 			err = errSourceUnavailable
 		}
+		if err == nil {
+			if e := s.detectPresentationRefresh(attempt, *t.record, nil); e != nil {
+				err = fmt.Errorf("资料变更检查失败：%v", e)
+			}
+		}
 	}
 	if ctx.Err() != nil {
 		return
@@ -154,6 +160,43 @@ func (s *Server) discoverUpdates(ctx context.Context, repo string) error {
 	if err != nil {
 		return err
 	}
+	hasLegacyPublished := false
+	for _, a := range all {
+		if a.RefreshOf == "" && a.Status == "approved" && a.Work == nil && strings.EqualFold(a.Repository, repo) {
+			hasLegacyPublished = true
+			break
+		}
+	}
+	legacyMatches := map[string]bool{}
+	for _, work := range works {
+		if hasLegacyPublished && work.ID == "" && matchingWork(all, repo, work) == nil {
+			target := Record{Repository: repo, Tag: work.Tag, AssetName: work.AssetName}
+			pet, _, e := s.readPresentation(ctx, target)
+			if e != nil {
+				return e
+			}
+			for _, parent := range all {
+				if parent.RefreshOf == "" && parent.Status == "approved" && parent.Work == nil && strings.EqualFold(parent.Repository, repo) && parent.Pet != nil && parent.Pet.ID == pet.ID && parent.Pet.Version == pet.Version {
+					if e := s.detectPresentationRefresh(ctx, parent, &work); e != nil {
+						return e
+					}
+					legacyMatches[work.Tag+"/"+work.AssetName] = true
+					break
+				}
+			}
+		}
+	}
+	for _, work := range works {
+		if parent := matchingWork(all, repo, work); parent != nil && parent.Status == "approved" && (parent.Tag != work.Tag || parent.AssetName != work.AssetName || parent.Work != nil && parent.Work.Path != work.Path) {
+			if err := s.detectPresentationRefresh(ctx, *parent, &work); err != nil {
+				return err
+			}
+		}
+	}
+	all, err = s.store.records()
+	if err != nil {
+		return err
+	}
 	pending := 0
 	for _, a := range all {
 		if a.Status == "queued" || a.Status == "validating" || a.Status == "pending" {
@@ -162,9 +205,9 @@ func (s *Server) discoverUpdates(ctx context.Context, repo string) error {
 	}
 	return s.store.db.Update(func(tx *bolt.Tx) error {
 		for _, w := range works {
-			exists := false
+			exists := legacyMatches[w.Tag+"/"+w.AssetName]
 			for _, a := range all {
-				if !strings.EqualFold(a.Repository, repo) {
+				if a.RefreshOf != "" || !strings.EqualFold(a.Repository, repo) {
 					continue
 				}
 				if w.ID != "" && a.Work != nil && a.Work.ID == w.ID && a.Work.Version == w.Version {

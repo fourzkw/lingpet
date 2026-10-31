@@ -8,9 +8,9 @@ export function initPreview(){let revision=0;
  async function detail(r){
   const request=++revision,cover=$('detailCover');cover.hidden=true;cover.removeAttribute('src');cover.alt=r.pet.name+' 封面';
   $('detailTitle').textContent=r.pet.name+' · '+r.pet.version;$('detailDescription').textContent=r.pet.description;
-  $('detailInfo').textContent='作者：'+r.pet.author+' / 授权：'+r.pet.license+' / '+(r.size/1048576).toFixed(1)+' MiB';$('hash').textContent='市场条目编号：'+r.id;$('detailInfo').append(petStats(r),repositoryLinks(r));
+  $('detailInfo').textContent='所属角色：'+(r.pet.character?.name||r.pet.name)+' / 形象名称：'+r.pet.name+' / 作者：'+r.pet.author+' / 授权：'+r.pet.license+' / '+(r.size/1048576).toFixed(1)+' MiB';$('hash').textContent='市场条目编号：'+r.id;$('detailInfo').append(petStats(r),repositoryLinks(r));
   $('download').hidden=true;$('download').removeAttribute('href');if(!$('detail').open)$('detail').showModal();
-  cover.src='/api/versions/'+r.id+'/preview/cover.png';cover.hidden=false;
+  cover.src='/api/versions/'+r.id+'/preview/cover.png?v='+encodeURIComponent(r.previewRevision||r.updatedAt||'');cover.hidden=false;
   if(r.status==='approved'){const v=await api('/api/versions/'+r.id+'/install');if(request!==revision||!$('detail').open)return;$('download').href=v.url;$('download').target='_blank';$('download').rel='noopener noreferrer';$('download').hidden=false;}
  }
  $('closeDetail').onclick=()=>{revision++;$('detail').close();};$('detail').addEventListener('close',()=>revision++);return detail;
@@ -24,7 +24,7 @@ export function repositoryLinks(record){
 }
 
 export function petStats(record){
- const root=document.createElement('p');root.className='pet-stats';root.title='下载量为当前版本分享包的 GitHub 下载次数；Star 为作者仓库获星数';
+ const root=document.createElement('p');root.className='pet-stats';root.title='下载量为同一桌宠所有已上架版本分享包的 GitHub 下载次数之和（同一附件去重）；Star 为作者仓库获星数';
  const count=value=>Number.isSafeInteger(value)&&value>=0?value.toLocaleString('zh-CN'):'暂不可用';
  root.append(text('span','↓ 下载 '+count(record.stats?.downloads)),text('span','★ Star '+count(record.stats?.stars)));return root;
 }

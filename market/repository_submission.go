@@ -5,7 +5,6 @@ import (
 	"errors"
 	bolt "go.etcd.io/bbolt"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -62,15 +61,8 @@ func (s *Server) submitRepository(w http.ResponseWriter, r *http.Request, repo s
 			return
 		}
 		assets[assetKey] = true
-		var existing *Record
-		for i := range all {
-			a := &all[i]
-			if strings.EqualFold(a.Repository, repo) && a.Tag == work.Tag && a.AssetName == work.AssetName && a.Status != "failed" {
-				existing = a
-				break
-			}
-		}
-		if existing != nil {
+		existing := matchingWork(all, repo, work)
+		if existing != nil && existing.Status != "failed" {
 			receipts = append(receipts, submissionReceipt{ID: existing.ID, Record: submissionStatus(*existing), Existing: true})
 			continue
 		}
@@ -107,12 +99,26 @@ func (s *Server) submitRepository(w http.ResponseWriter, r *http.Request, repo s
 		failure(w, 500, e)
 		return
 	}
+	refreshCount := 0
+	for i, work := range works {
+		parent := matchingWork(all, repo, work)
+		if parent == nil || parent.Status != "approved" {
+			continue
+		}
+		task, added, err := s.queuePresentationRefresh(*parent, &work, "手动资料刷新", false)
+		if err != nil {
+			failure(w, 429, err)
+			return
+		}
+		refreshCount += boolCount(added)
+		receipts[i] = submissionReceipt{ID: task.ID, Record: submissionStatus(task), Existing: !added}
+	}
 	first := receipts[0]
 	status := 202
-	if len(created) == 0 {
+	if len(created)+refreshCount == 0 {
 		status = 200
 	}
-	response := map[string]any{"id": first.ID, "record": first.Record, "existing": len(created) == 0, "records": receipts, "created": len(created), "total": len(receipts)}
+	response := map[string]any{"id": first.ID, "record": first.Record, "existing": len(created)+refreshCount == 0, "records": receipts, "created": len(created) + refreshCount, "refreshCount": refreshCount, "total": len(receipts)}
 	if first.Token != "" {
 		response["token"] = first.Token
 	}

@@ -8,11 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -226,7 +228,7 @@ func (s *Server) routes() http.Handler {
 		}
 		w.Header().Set("Cache-Control", "private, max-age=3600")
 		w.Header().Set("Content-Type", "image/png")
-		http.ServeFile(w, r, filepath.Join(s.cfg.DataDir, "previews", a.ID, filepath.FromSlash(file)))
+		http.ServeFile(w, r, filepath.Join(s.cfg.DataDir, "previews", previewKey(a), filepath.FromSlash(file)))
 	})
 	mux.HandleFunc("GET /api/admin/versions", func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := s.requireAdmin(w, r); !ok {
@@ -259,7 +261,7 @@ func (s *Server) routes() http.Handler {
 		_ = s.store.audit(u.Login, "pet."+r.PathValue("action"), r.PathValue("id"), b.Reason)
 		respond(w, 200, map[string]bool{"ok": true})
 	})
-	mux.Handle("/", http.FileServer(http.FS(webFiles())))
+	mux.Handle("/", staticWeb(webFiles()))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
@@ -270,6 +272,22 @@ func (s *Server) routes() http.Handler {
 			return
 		}
 		mux.ServeHTTP(w, r)
+	})
+}
+
+// staticWeb 伺服内嵌的官网/集市资源。embed.FS 的文件没有修改时间，浏览器既拿不到
+// Last-Modified 也没有 ETag，只能按启发式规则缓存：升级二进制后用户可能一直看到旧
+// 的 CSS。所以文本资源一律要求回源（no-cache），图片这类大文件才允许长缓存。
+func staticWeb(files fs.FS) http.Handler {
+	serve := http.FileServer(http.FS(files))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch strings.ToLower(path.Ext(r.URL.Path)) {
+		case ".png", ".jpg", ".jpeg", ".webp", ".gif", ".ico", ".svg":
+			w.Header().Set("Cache-Control", "public, max-age=604800")
+		default:
+			w.Header().Set("Cache-Control", "no-cache")
+		}
+		serve.ServeHTTP(w, r)
 	})
 }
 func (s *Server) visible(w http.ResponseWriter, r *http.Request) (Record, bool) {
@@ -363,9 +381,53 @@ func (s *Server) submit(w http.ResponseWriter, r *http.Request) {
 		failure(w, 500, e)
 		return
 	}
+	// A legacy single-pet repository can move unchanged identity to a new Release.
+	if repositoryOnly {
+		candidate := Record{Repository: repo, Tag: b.Tag, AssetName: b.AssetName}
+		hasPublished, knownTarget := false, false
+		for _, a := range all {
+			if a.RefreshOf == "" && strings.EqualFold(a.Repository, repo) {
+				knownTarget = knownTarget || (a.Tag == b.Tag && a.AssetName == b.AssetName)
+				hasPublished = hasPublished || (a.Status == "approved" && a.Work == nil)
+			}
+		}
+		if hasPublished && !knownTarget {
+			if pet, _, err := s.readPresentation(r.Context(), candidate); err == nil {
+				for _, a := range all {
+					if a.RefreshOf == "" && a.Status == "approved" && a.Work == nil && strings.EqualFold(a.Repository, repo) && a.Pet != nil && a.Pet.ID == pet.ID && a.Pet.Version == pet.Version {
+						work := RepositoryPet{Tag: b.Tag, AssetName: b.AssetName}
+						task, created, err := s.queuePresentationRefresh(a, &work, "手动资料刷新", false)
+						if err != nil {
+							failure(w, 429, err)
+							return
+						}
+						code := 200
+						if created {
+							code = 202
+						}
+						respond(w, code, map[string]any{"id": task.ID, "record": submissionStatus(task), "existing": !created, "refreshCount": boolCount(created)})
+						return
+					}
+				}
+			}
+		}
+	}
 	pending, total := 0, 0
 	for _, a := range all {
-		if strings.EqualFold(a.Repository, repo) && a.Tag == b.Tag && a.AssetName == b.AssetName && a.Status != "failed" {
+		if strings.EqualFold(a.Repository, repo) && a.Tag == b.Tag && a.AssetName == b.AssetName && a.Status != "failed" && a.RefreshOf == "" {
+			if a.Status == "approved" {
+				task, created, err := s.queuePresentationRefresh(a, nil, "手动资料刷新", false)
+				if err != nil {
+					failure(w, 429, err)
+					return
+				}
+				code := 200
+				if created {
+					code = 202
+				}
+				respond(w, code, map[string]any{"id": task.ID, "record": submissionStatus(task), "existing": !created, "refreshCount": boolCount(created)})
+				return
+			}
 			if repositoryOnly {
 				respond(w, 200, map[string]any{"id": a.ID, "record": submissionStatus(a), "existing": true})
 				return
@@ -435,6 +497,9 @@ func (s *Server) lookupSubmission(w http.ResponseWriter, r *http.Request) {
 // Repository lookups are public status summaries, never private records or previews.
 func submissionStatus(a Record) map[string]any {
 	result := map[string]any{"id": a.ID, "repository": a.Repository, "tag": a.Tag, "assetName": a.AssetName, "status": a.Status, "createdAt": a.Created, "updatedAt": a.Updated}
+	if a.RefreshOf != "" {
+		result["refreshOf"] = a.RefreshOf
+	}
 	if a.Error != "" {
 		result["error"] = a.Error
 	}
@@ -489,6 +554,10 @@ func (s *Server) worker(ctx context.Context) {
 	}
 }
 func (s *Server) validate(ctx context.Context, a Record) {
+	if a.RefreshOf != "" {
+		s.validatePresentationRefresh(ctx, a)
+		return
+	}
 	a.Status = "validating"
 	a.Updated = time.Now().UTC()
 	if e := s.store.put("records", a.ID, a); e != nil {
@@ -588,6 +657,10 @@ func (s *Server) validateInner(ctx context.Context, a *Record) error {
 	if pack.Pet.ID != pet.ID || pack.Pet.Version != pet.Version || roleID(pack.Pet.Character) != roleID(pet.Character) {
 		return errors.New("包内作品 ID、版本或角色归属与仓库资料不符")
 	}
+	digest, e := presentationDigest(pet, cover)
+	if e != nil {
+		return e
+	}
 	// Repository fields describe the market listing; technical compatibility comes from the package.
 	pet.FormatVersion = pack.Pet.FormatVersion
 	pet.MinAppVersion = pack.Pet.MinAppVersion
@@ -596,7 +669,7 @@ func (s *Server) validateInner(ctx context.Context, a *Record) error {
 		return e
 	}
 	for _, old := range all {
-		if old.ID != a.ID && old.Source != nil && old.Pet != nil && old.Source.RepoID == source.RepoID && old.Pet.ID == pet.ID && old.Pet.Version == pet.Version {
+		if old.ID != a.ID && old.ID != a.RefreshOf && old.RefreshOf == "" && old.Source != nil && old.Pet != nil && old.Source.RepoID == source.RepoID && old.Pet.ID == pet.ID && old.Pet.Version == pet.Version {
 			return errors.New("该作品版本已存在，请增加版本号后重新提交")
 		}
 	}
@@ -627,6 +700,7 @@ func (s *Server) validateInner(ctx context.Context, a *Record) error {
 	a.SHA256 = pack.Hash
 	a.Size = source.Size
 	a.Preview = preview
+	a.PresentationDigest = digest
 	return nil
 }
 func validPublicURL(raw string, dev bool) error {

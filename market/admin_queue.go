@@ -45,6 +45,10 @@ func (s *Server) adminQueue(w http.ResponseWriter, r *http.Request) {
 			entry.Name = a.Work.ID
 			entry.Version = a.Work.Version
 		}
+		if a.RefreshOf != "" {
+			entry.Kind = "refresh"
+			entry.Name = "资料刷新 · " + entry.Name
+		}
 		if a.Status != "validating" {
 			position++
 			entry.Position = position
@@ -57,7 +61,7 @@ func (s *Server) adminQueue(w http.ResponseWriter, r *http.Request) {
 	now := time.Now().UTC()
 	checkPosition := 0
 	for _, t := range s.sourceTasks(all) {
-		entry := queueEntry{ID: t.key, Kind: "discovery", Name: "发现新版本", Repository: t.repo, Status: "disabled", Missing: t.state.Missing, Error: t.state.Error}
+		entry := queueEntry{ID: t.key, Kind: "discovery", Name: "发现版本与资料更新", Repository: t.repo, Status: "disabled", Missing: t.state.Missing, Error: t.state.Error}
 		if t.record != nil {
 			entry.Kind = "source"
 			entry.Name = t.record.AssetName

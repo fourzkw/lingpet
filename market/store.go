@@ -72,23 +72,26 @@ type Review struct {
 	At     time.Time `json:"at"`
 }
 type Record struct {
-	Work       *RepositoryPet `json:"work,omitempty"`
-	Stats      *PetStats      `json:"stats"`
-	ID         string         `json:"id"`
-	Repository string         `json:"repository"`
-	Tag        string         `json:"tag"`
-	AssetName  string         `json:"assetName"`
-	Submitter  string         `json:"submitter"`
-	Status     string         `json:"status"`
-	Error      string         `json:"error,omitempty"`
-	Pet        *Pet           `json:"pet,omitempty"`
-	Source     *Asset         `json:"source,omitempty"`
-	SHA256     string         `json:"sha256,omitempty"`
-	Size       int64          `json:"size"`
-	Preview    *Manifest      `json:"preview,omitempty"`
-	Reviews    []Review       `json:"reviews"`
-	Created    time.Time      `json:"createdAt"`
-	Updated    time.Time      `json:"updatedAt"`
+	RefreshOf          string         `json:"refreshOf,omitempty"`
+	PresentationDigest string         `json:"presentationDigest,omitempty"`
+	PreviewKey         string         `json:"previewRevision,omitempty"`
+	Work               *RepositoryPet `json:"work,omitempty"`
+	Stats              *PetStats      `json:"stats"`
+	ID                 string         `json:"id"`
+	Repository         string         `json:"repository"`
+	Tag                string         `json:"tag"`
+	AssetName          string         `json:"assetName"`
+	Submitter          string         `json:"submitter"`
+	Status             string         `json:"status"`
+	Error              string         `json:"error,omitempty"`
+	Pet                *Pet           `json:"pet,omitempty"`
+	Source             *Asset         `json:"source,omitempty"`
+	SHA256             string         `json:"sha256,omitempty"`
+	Size               int64          `json:"size"`
+	Preview            *Manifest      `json:"preview,omitempty"`
+	Reviews            []Review       `json:"reviews"`
+	Created            time.Time      `json:"createdAt"`
+	Updated            time.Time      `json:"updatedAt"`
 }
 type Session struct {
 	AuthKey string    `json:"authKey,omitempty"`

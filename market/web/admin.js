@@ -1,5 +1,5 @@
 import {$,api,notice,text,btn,initPreview,repositoryLinks} from './common.js';
-const detail=initPreview(),statuses={queued:'排队校验',validating:'正在校验',pending:'等待自动校验',approved:'已上架',rejected:'已驳回',unpublished:'已下架',failed:'校验失败'};
+const detail=initPreview(),statuses={queued:'排队校验',validating:'正在校验',pending:'等待自动校验',approved:'已上架',rejected:'已驳回',unpublished:'已下架',failed:'校验失败',refreshed:'资料刷新完成'};
 let account={},recordCache=[],activePanel="overview",loading=null;
 async function session(){
  account=await api('/api/me');const root=$('account');root.replaceChildren();$('loginPanel').hidden=!!account.admin;$('admin').hidden=!account.admin||account.mustChangePassword;
@@ -33,7 +33,7 @@ function renderRecords(){
  const root=$('adminRecords'),filter=$('reviewStatus').value,q=$('reviewQuery').value.trim().toLowerCase();root.replaceChildren();
  const rows=recordCache.filter(r=>(!filter||r.status===filter)&&(!q||(r.repository+' '+r.tag+' '+(r.pet?.name||'')).toLowerCase().includes(q)));
  for(const r of rows){const row=document.createElement('article');row.className='record';const info=document.createElement('div'),actions=document.createElement('div');actions.className='actions';
- info.append(text('strong',(r.pet?.name||r.assetName)+' · '+statuses[r.status]),text('p',r.repository+' / '+r.tag+' · '+r.submitter),text('p',r.error||r.reviews?.at(-1)?.reason||''));
+ info.append(text('strong',(r.refreshOf?'资料刷新 · ':'')+(r.pet?.name||r.assetName)+' · '+statuses[r.status]),text('p',r.repository+' / '+r.tag+' · '+r.submitter),text('p',r.error||r.reviews?.at(-1)?.reason||''));
  info.append(repositoryLinks(r));
  if(r.pet)actions.append(btn(r.preview?'预览八动作':'查看介绍与封面',()=>detail(r)));
  if(r.status==='failed')actions.append(btn('重试读取资料',()=>review(r,'retry','')));

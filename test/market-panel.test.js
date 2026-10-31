@@ -68,3 +68,10 @@ test('repository-only submissions and lookups need no private token',async t=>{
 test('native market accepts cover-only submissions without animation manifests',async t=>{
  const dir=await data(t),{record}=fixture();record.preview=null;const service=new MarketService(dir,{fetcher:async()=>new Response(JSON.stringify(record))});assert.equal((await service.detail(record.id)).preview,null);
 });
+
+test('same version presentation revision invalidates cached market covers',async t=>{
+ const dir=await data(t),{record,png}=fixture();let images=0;
+ const service=new MarketService(dir,{fetcher:async url=>{if(String(url).includes('/preview/')){images++;return new Response(png);}return new Response(JSON.stringify(record));}});
+ await service.detail(id);await service.image({versionId:id,cover:true});await service.image({versionId:id,cover:true});assert.equal(images,1);
+ record.previewRevision='new-snapshot';await service.detail(id);await service.image({versionId:id,cover:true});assert.equal(images,2);
+});

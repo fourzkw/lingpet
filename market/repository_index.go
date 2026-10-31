@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 )
 
 const maxRepositoryPets = 20
@@ -83,7 +84,40 @@ func (g *githubClient) Download(ctx context.Context, asset Asset, destination st
 	if !githubURL(asset.URL) || asset.Size < 1 || asset.Size > maxPackage {
 		return errors.New("附件地址或体积无效")
 	}
-	req, e := http.NewRequestWithContext(ctx, "GET", asset.URL, nil)
+	routes := g.routes
+	if len(routes) == 0 {
+		routes = []string{"direct"}
+	}
+	var failures []string
+	for _, route := range routes {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		prefix, ok := githubGateways[route]
+		if !ok {
+			return errors.New("未知 GitHub 访问线路")
+		}
+		e := g.downloadRoute(ctx, asset, prefix+asset.URL, route, destination)
+		if e == nil {
+			return nil
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		// Disk failures cannot be fixed by downloading the same attachment again.
+		var diskError *os.PathError
+		if errors.As(e, &diskError) {
+			return e
+		}
+		failures = append(failures, fmt.Sprintf("%s: %v", route, e))
+	}
+	return fmt.Errorf("GitHub 附件下载失败（%s）", strings.Join(failures, "；"))
+}
+
+func (g *githubClient) downloadRoute(ctx context.Context, asset Asset, target, route, destination string) error {
+	attempt, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	defer cancel()
+	req, e := http.NewRequestWithContext(attempt, "GET", target, nil)
 	if e != nil {
 		return e
 	}
@@ -91,8 +125,11 @@ func (g *githubClient) Download(ctx context.Context, asset Asset, destination st
 	client := *g.client
 	client.CheckRedirect = func(next *http.Request, via []*http.Request) error {
 		next.Header.Del("Authorization")
-		if len(via) > 5 || !githubURL(next.URL.String()) {
-			return errors.New("拒绝非 GitHub 下载重定向")
+		if len(via) > 5 || next.URL.Scheme != "https" || next.URL.User != nil || next.URL.Port() != "" {
+			return errors.New("拒绝无效附件下载重定向")
+		}
+		if !githubURL(next.URL.String()) && (route == "direct" || (next.URL.Hostname() != "gh-proxy.com" && next.URL.Hostname() != "ghfast.top")) {
+			return errors.New("拒绝非受信任附件下载重定向")
 		}
 		return nil
 	}
@@ -102,12 +139,21 @@ func (g *githubClient) Download(ctx context.Context, asset Asset, destination st
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 || response.ContentLength > maxPackage {
-		return errors.New("GitHub 附件下载失败或体积超限")
+		return fmt.Errorf("HTTP %d 或附件体积超限", response.StatusCode)
+	}
+	if strings.Contains(strings.ToLower(response.Header.Get("Content-Type")), "text/html") {
+		return errors.New("附件下载返回网页，未返回桌宠包")
 	}
 	file, e := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if e != nil {
 		return e
 	}
+	complete := false
+	defer func() {
+		if !complete {
+			_ = os.Remove(destination)
+		}
+	}()
 	n, e := io.Copy(file, io.LimitReader(response.Body, maxPackage+1))
 	closeError := file.Close()
 	if e != nil {
@@ -119,5 +165,6 @@ func (g *githubClient) Download(ctx context.Context, asset Asset, destination st
 	if n != asset.Size || n > maxPackage {
 		return errors.New("附件实际大小与 Release 信息不符")
 	}
+	complete = true
 	return nil
 }

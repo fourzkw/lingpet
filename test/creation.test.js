@@ -104,7 +104,7 @@ test('synthetic video -> both atlases -> import -> activate preserves existing p
   setCustomAppearances(entries);t.after(()=>setCustomAppearances([]));const registry=new PetRegistry({}),first=registry.create({character:'chatgpt',follow:{mode:'source',source:'codex'}}),second=registry.duplicate(first.id),snapshot=structuredClone(second);
   const runtime=await startLocalServer(new StateStore(),dir,{reloadAppearances:async()=>({synced:true}),petManager:{list:()=>({pets:registry.pets}),manage:({id,value})=>{registry.update(id,value);return {ok:true};}}});t.after(()=>runtime.close());
   const activated=await service.appearance({action:'activate',projectId:project.id,taskId:job.id,appearanceId:'fixture',petId:first.id,variant:'original'});assert.equal(activated.activated,true);assert.equal(first.appearance,'fixture');assert.equal(first.variant,'original');assert.deepEqual(first.follow,{mode:'source',source:'codex'});assert.deepEqual(second,snapshot);assert.equal(appearanceInfo(first).asset,'custom:fixture');
-  await assert.rejects(service.appearance({action:'import',projectId:project.id,taskId:job.id,appearanceId:'fixture'}),/已存在/);
+  const updated=await service.appearance({action:'import',projectId:project.id,taskId:job.id,appearanceId:'fixture'});assert.equal(updated.updated,true);assert.equal((await service.appearance({action:'list'})).appearances.length,1);
   const manifestPath=path.join(result.bundle,'manifest.json'),manifest=JSON.parse(await readFile(manifestPath,'utf8'));manifest.clips.idle.file='../spec.json';await save(manifestPath,manifest);assert.equal((await validateAppearance(result.bundle)).valid,false);
 });
 
@@ -161,3 +161,36 @@ test('new role imports complete artwork and reloads from disk without runtime re
   assert.equal(migratePetConfig(registry.config).pets.at(-1).character,role.id);
 });
 
+
+
+test('action edits reuse the project appearance, preserve other clips and roll back failed publication',async t=>{
+ const {dir,service}=await setup(t),project=await service.project({action:'create',name:'唯一形象'});
+ const {PNG}=await import('pngjs');
+ async function bundle(id,states,color,duration=100){
+  const root=path.join(dir,id);await mkdir(root);const image=new PNG({width:1,height:1});image.data.set(color);await writeFile(path.join(root,'sheet.png'),PNG.sync.write(image));
+  const clips=Object.fromEntries(states.map(s=>[s,{file:'sheet.png',sourceFrames:1,frames:[0],durations:[duration],loop:!['click','pet','done','error'].includes(s)}]));
+  await save(path.join(root,'manifest.json'),{columns:1,tileSize:1,variants:['pixel'],clips});
+  await service.store.write('tasks',{id,projectId:project.id,kind:'process',status:'completed',baseId:null,bundle:root});return root;
+ }
+ await bundle('initial',STATES,[255,0,0,255]);
+ const first=await service.appearance({action:'import',projectId:project.id,taskId:'initial'}),id=first.appearance.id;
+ const partial=await bundle('edit',['working','pet'],[0,0,255,255],250);
+ assert.equal((await validateAppearance(partial)).valid,true);
+ const update=await service.appearance({action:'import',projectId:project.id,taskId:'edit'});
+ assert.equal(update.updated,true);assert.equal(update.appearance.id,id);assert.equal(update.appearance.name,'唯一形象');
+ assert.equal((await service.appearance({action:'list'})).appearances.length,1);
+ assert.equal(update.appearance.manifest.clips.working.durations[0],250);assert.ok(update.appearance.manifest.clips.pet);
+ const root=update.appearance.root,m=update.appearance.manifest;
+ assert.deepEqual(PNG.sync.read(await readFile(path.join(root,m.clips.idle.file))).data,Buffer.from([255,0,0,255]));
+ assert.deepEqual(PNG.sync.read(await readFile(path.join(root,m.clips.working.file))).data,Buffer.from([0,0,255,255]));
+ assert.equal((await validateAppearance(path.join(update.backup,'bundle'))).complete,true);
+ await assert.rejects(service.appearance({action:'import',projectId:project.id,taskId:'edit',appearanceId:'another-id'}),/createNew/);
+ const other=await service.project({action:'create'});await service.store.write('tasks',{id:'foreign',projectId:other.id,kind:'process',status:'completed',baseId:null,bundle:partial});
+ await assert.rejects(service.appearance({action:'import',projectId:other.id,taskId:'foreign',appearanceId:id}),/不属于/);
+ const before=await readFile(path.join(root,'manifest.json'),'utf8'),write=service.store.write.bind(service.store);let fail=true;
+ service.store.write=async(group,value)=>{if(group==='appearances'&&fail){fail=false;throw Error('simulated save failure');}return write(group,value);};
+ await assert.rejects(service.appearance({action:'import',projectId:project.id,taskId:'edit'}),/simulated/);
+ assert.equal(await readFile(path.join(root,'manifest.json'),'utf8'),before);assert.equal((await validateAppearance(root)).valid,true);
+ service.store.write=write;
+ const fork=await service.appearance({action:'import',projectId:project.id,taskId:'initial',createNew:true,appearanceId:'intentional-new-shape'});assert.equal(fork.updated,false);assert.notEqual(fork.appearance.id,id);
+});

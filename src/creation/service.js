@@ -1,8 +1,8 @@
 import {RemoteGeneration} from './remote-generation.js';
 import {GenerationAPISettings,providerIds} from './generation-api-settings.js';
 import {ComfySettings} from './comfy-settings.js';
-import {clipCandidates,maxClipDuration} from '../../desktop/action-clips.js';
-import {readFile,writeFile,mkdir,cp,access} from 'node:fs/promises';
+import {clipCandidates} from '../../desktop/action-clips.js';
+import {readFile,writeFile,mkdir,access} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {randomUUID} from 'node:crypto';
@@ -14,6 +14,7 @@ import {environment,qwenWorkflow,h3Workflow} from './workflows.js';
 import {validateAppearance} from './validation.js';
 import {readEndpoint,request} from '../bridge-client.js';
 import {CHARACTERS} from '../characters.js';
+import {importAppearance} from './import-appearance.js';
 
 const ACTIVE=['submitting','submission_unknown','queued','running','processing','finalizing','cancelling','missing'];
 const now=()=>new Date().toISOString();
@@ -206,15 +207,18 @@ export class CreationService{
     const report=await validateAppearance(job.bundle);if(p.action==='validate')return report;if(!report.valid)throw new Error(report.errors.join('; '));
     const project=await this.store.read('projects',p.projectId);if(job.baseId!==project.selectedBase)throw new Error('基础图已经改变，请重新处理当前版本');
     if(p.action==='import'){
-      if(!report.complete)throw new Error('导入需要全部八种动作');
-      const id=safeId(p.appearanceId||'custom-'+job.id),character=p.character||project.character;
+      const entries=await this.store.list('appearances'),character=p.character||project.character;
+      const previous=entries.filter(a=>a.projectId===project.id&&a.character===character).sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
+      const target=p.createNew?undefined:previous.find(a=>a.id===project.appearanceId)||previous[0];
+      if(target&&p.appearanceId&&p.appearanceId!==target.id&&!entries.some(a=>a.id===p.appearanceId))throw new Error('本项目已有形象 '+target.id+'，动作更新请沿用该 ID；另建形象需 createNew:true');
+      const id=safeId(p.appearanceId||target?.id||'custom-'+(p.createNew?randomUUID():project.id)),existing=entries.find(a=>a.id===id);
       const role=await this.requireCharacter(character);
       if((role.appearances||[]).some(a=>a.id===id&&!a.custom))throw new Error('新形象不能覆盖内置形象 ID');
-      if((await this.store.list('appearances')).some(a=>a.id===id))throw new Error('该形象 ID 已存在，请使用新 ID 保留原有形象');
-      const root=path.join(this.dir,'appearances',id);try{await access(root);throw new Error('目标资源目录已存在');}catch(e){if(e.code!=='ENOENT')throw e;}
-      await cp(job.bundle,root,{recursive:true,errorOnExist:true,force:false});
-      const entry={id,character,name:p.name||project.name,asset:'custom:'+id,variants:report.variants,pixelSize:report.manifest.tileSize,doneMs:maxClipDuration(report.manifest.clips.done),root,manifest:report.manifest,projectId:project.id,taskId:job.id,createdAt:now()};await this.store.write('appearances',entry);
-      const sync=await this.syncAppearances();return {imported:true,activated:false,appearance:entry,runtime:sync};
+      if(existing&&(p.createNew||existing.projectId!==project.id||existing.character!==character))throw new Error('形象 ID 已存在且不属于当前更新目标');
+      if(!existing)try{await access(path.join(this.dir,'appearances',id));throw new Error('目标资源目录已存在');}catch(e){if(e.code!=='ENOENT')throw e;}
+      const result=await importAppearance({dir:this.dir,store:this.store,job,project,id,character,name:p.name,existing});
+      project.appearanceId=id;await this.store.write('projects',project);
+      const sync=await this.syncAppearances();return {imported:true,updated:result.updated,backup:result.backup,activated:false,appearance:result.entry,runtime:sync};
     }
     if(p.action==='activate'){
       const entry=(await this.store.list('appearances')).find(a=>a.id===p.appearanceId&&a.taskId===job.id);if(!entry)throw new Error('形象尚未导入');if(!p.petId)throw new Error('激活必须明确指定桌宠实例 ID');

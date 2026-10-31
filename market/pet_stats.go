@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 )
 
-// Downloads counts this version's petpack asset; stars belongs to its repository.
+// Downloads sums distinct published petpack assets; stars belongs to the repository.
 type PetStats struct {
 	Downloads int64 `json:"downloads"`
 	Stars     int64 `json:"stars"`
@@ -52,6 +53,40 @@ func (g *githubClient) Stats(ctx context.Context, repo, tag, name string) (PetSt
 }
 
 func (s *Server) petStats(ctx context.Context, record Record) *PetStats {
+	all, err := s.store.records()
+	if err != nil {
+		return nil
+	}
+	return s.petStatsWithHistory(ctx, record, all)
+}
+
+func (s *Server) petStatsWithHistory(ctx context.Context, record Record, all []Record) *PetStats {
+	current := s.assetStats(ctx, record)
+	if current == nil {
+		return nil
+	}
+	total := *current
+	assetKey := func(a Record) string {
+		return strings.ToLower(a.Repository) + "\x00" + a.Tag + "\x00" + a.AssetName
+	}
+	seen := map[string]bool{assetKey(record): true}
+	for _, version := range all {
+		if version.Status != "approved" || version.Pet == nil || petIdentity(version) != petIdentity(record) || seen[assetKey(version)] {
+			continue
+		}
+		seen[assetKey(version)] = true
+		stats := s.assetStats(ctx, version)
+		if stats == nil {
+			// Never present an incomplete sum as the total download count.
+			return nil
+		}
+		total.Downloads += stats.Downloads
+	}
+	return &total
+}
+
+// Keep per-attachment caches so new versions can reuse historical statistics.
+func (s *Server) assetStats(ctx context.Context, record Record) *PetStats {
 	provider, ok := s.github.(interface {
 		Stats(context.Context, string, string, string) (PetStats, error)
 	})
@@ -88,6 +123,10 @@ func (s *Server) petStats(ctx context.Context, record Record) *PetStats {
 
 // Limit both concurrency and the total wait so GitHub cannot hold up the market.
 func (s *Server) populatePetStats(ctx context.Context, records []Record) {
+	all, err := s.store.records()
+	if err != nil {
+		return
+	}
 	ctx, cancel := context.WithTimeout(ctx, 8*time.Second)
 	defer cancel()
 	jobs := make(chan int)
@@ -97,7 +136,7 @@ func (s *Server) populatePetStats(ctx context.Context, records []Record) {
 		go func() {
 			defer workers.Done()
 			for i := range jobs {
-				records[i].Stats = s.petStats(ctx, records[i])
+				records[i].Stats = s.petStatsWithHistory(ctx, records[i], all)
 			}
 		}()
 	}

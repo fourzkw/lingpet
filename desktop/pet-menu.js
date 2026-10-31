@@ -16,6 +16,7 @@ export function petMenuTemplate(pet,{stateLabel='',demo=false,update,openSetting
     {id:'always-on-top',label:'始终置顶',type:'checkbox',checked:pet.alwaysOnTop,click:item=>update({alwaysOnTop:item.checked})},
     {id:'show-label',label:'显示状态提示',type:'checkbox',checked:pet.showLabel,click:item=>update({showLabel:item.checked})},
     {id:'follow',label:'会话跟随',submenu:[
+      {label:'不跟随会话',type:'radio',checked:pet.follow.mode==='none',click:()=>update({follow:{mode:'none'}})},
       {label:'自动跟随所有来源',type:'radio',checked:pet.follow.mode==='global',click:()=>update({follow:{mode:'global'}})},
       ...[['dsh','DSH'],['cursor','Cursor'],['codex','Codex']].map(([source,name])=>({label:'仅跟随 '+name,type:'radio',checked:pet.follow.mode==='source'&&pet.follow.source===source,click:()=>update({follow:{mode:'source',source}})})),
       ...(pet.follow.mode==='session'?[{label:'已固定当前会话',type:'radio',checked:true,enabled:false}]:[]),

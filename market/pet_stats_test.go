@@ -30,14 +30,19 @@ func TestGitHubPetStatsSelectsPackageAsset(t *testing.T) {
 
 type statsGitHub struct {
 	*fakeGitHub
-	calls int
-	fail  bool
+	calls      int
+	fail       bool
+	downloads  map[string]int64
+	failingTag string
 }
 
-func (g *statsGitHub) Stats(context.Context, string, string, string) (PetStats, error) {
+func (g *statsGitHub) Stats(_ context.Context, _ string, tag string, _ string) (PetStats, error) {
 	g.calls++
-	if g.fail {
+	if g.fail || tag == g.failingTag {
 		return PetStats{}, errors.New("offline")
+	}
+	if g.downloads != nil {
+		return PetStats{Downloads: g.downloads[tag], Stars: 7}, nil
 	}
 	return PetStats{Downloads: 42, Stars: 0}, nil
 }
@@ -71,7 +76,56 @@ func TestPublicPetStatsCacheAndFailure(t *testing.T) {
 		t.Fatal("failure not cached")
 	}
 	record.ID = newID()
+	record.Pet = &Pet{ID: "other", Name: "other"}
 	if s.petStats(context.Background(), record) != nil {
 		t.Fatal("unknown stats reported as zero")
+	}
+}
+
+func TestPetStatsAccumulatesPublishedVersions(t *testing.T) {
+	s, ts, c := fixtureServer(t)
+	g := &statsGitHub{fakeGitHub: s.github.(*fakeGitHub), downloads: map[string]int64{"v1": 42, "v2": 8}}
+	s.github = g
+	latest := Record{ID: newID(), Repository: "alice/pet", Tag: "v2", AssetName: "pet.petpack", Status: "approved", Pet: &Pet{ID: "fox", Version: "2.0.0"}}
+	old := latest
+	old.ID, old.Tag, old.Pet = newID(), "v1", &Pet{ID: "fox", Version: "1.0.0"}
+	duplicate := old
+	duplicate.ID = newID()
+	other := old
+	other.ID, other.Pet = newID(), &Pet{ID: "cat", Version: "1.0.0"}
+	pending := latest
+	pending.ID, pending.Tag, pending.Status = newID(), "v3", "pending"
+	for _, record := range []Record{latest, old, duplicate, other, pending} {
+		if err := s.store.put("records", record.ID, record); err != nil {
+			t.Fatal(err)
+		}
+	}
+	status, body := call(t, c, ts.URL, "GET", "/api/versions/"+latest.ID, nil)
+	var detail Record
+	if err := json.Unmarshal(body, &detail); err != nil {
+		t.Fatal(err)
+	}
+	if status != 200 || detail.Stats == nil || detail.Stats.Downloads != 50 || detail.Stats.Stars != 7 || g.calls != 2 {
+		t.Fatalf("expected distinct published assets: %d %s calls=%d", status, body, g.calls)
+	}
+	if stats := s.petStats(context.Background(), old); stats == nil || stats.Downloads != 50 {
+		t.Fatalf("historical detail must share cumulative count: %+v", stats)
+	}
+}
+
+func TestPetStatsDoesNotExposePartialTotal(t *testing.T) {
+	s, _, _ := fixtureServer(t)
+	g := &statsGitHub{fakeGitHub: s.github.(*fakeGitHub), failingTag: "v1"}
+	s.github = g
+	latest := Record{ID: newID(), Repository: "alice/pet", Tag: "v2", AssetName: "pet.petpack", Status: "approved", Pet: &Pet{ID: "fox"}}
+	old := latest
+	old.ID, old.Tag = newID(), "v1"
+	if stats := s.petStatsWithHistory(context.Background(), latest, []Record{old}); stats != nil {
+		t.Fatalf("unknown history must not appear as a complete total: %+v", stats)
+	}
+	then := time.Now().Add(-time.Hour)
+	s.store.put("meta", "pet-stats:"+old.ID, cachedPetStats{Stats: &PetStats{Downloads: 10}, CheckedAt: then, UpdatedAt: then})
+	if stats := s.petStatsWithHistory(context.Background(), latest, []Record{old}); stats == nil || stats.Downloads != 52 {
+		t.Fatalf("retain cached historical count on failure: %+v", stats)
 	}
 }
