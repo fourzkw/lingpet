@@ -111,7 +111,7 @@ func openStore(dir string) (*Store, error) {
 	}
 	s := &Store{db}
 	err = db.Update(func(tx *bolt.Tx) error {
-		for _, name := range []string{"records", "sessions", "oauth", "submission-secrets", "meta", "releases", "release-channels", "admin-audit", "metrics"} {
+		for _, name := range []string{"records", "sessions", "oauth", "submission-secrets", "meta", "releases", "release-channels", "admin-audit", "metrics", "announcements"} {
 			if _, e := tx.CreateBucketIfNotExists([]byte(name)); e != nil {
 				return e
 			}

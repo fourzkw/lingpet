@@ -108,3 +108,27 @@ style.css
 修复后复跑：esbuild 打包 78935 字节 0 warning、无残留 `@import`；专用检查脚本确认 11 项修复都落在预期的媒体块里（括号/引号平衡、`!important` 仍只有 reduced-motion 那 4 处、硬编码颜色仍为 0）；`go test . -count=1` 全绿（11.7s）；`node test/ui-themes.test.js`、`market-links`、`market-package` 共 32 个用例通过。
 
 之后又按复核意见收了三处细节：把 `.touch-illustration` 的间距用三段式选择器写实（原来那条 `margin-top` 被 `.experience-card .touch-illustration{margin-top:auto}` 压成死声明）、把主题选择器的分隔线归零同时放进 `@820`（原来只在 `≤560` 生效，561–780 会多留 14px）、把 `.panel` 的圆角拆回 16px 只让 `.record` 统一到 14px；页头 `border-bottom` 也补了 `var(--line)` 实色回退。当前文件 1571 行 / 249 个规则块。
+
+## 8. 应用公告：后台发布工作台与桌面端接收（第三轮）
+
+公告是本次功能新增的界面，不改老页面结构，只加一条 refine 段落（现在文件末尾的「15. 公告：发布工作台与编辑对话框」）与桌面端 `settings.css` 里的公告段。
+
+**级别 → 语义色（后台与桌面端共用一套映射）**
+
+| 级别 | 令牌 | 用途 |
+| --- | --- | --- |
+| 普通 info | `--state-thinking` | 顶部横幅、版本说明 |
+| 重要 important | `--state-approval` | 维护与故障说明，默认强弹 |
+| 紧急 critical | `--state-error` | 需要立即处理，可强制确认 |
+
+颜色只做「卡片色条 / 圆点 / 边线 / 小胶囊」，标题正文始终是 `--text` / `--muted`，因此四套主题、四个级别都不依赖颜色也能读懂；级别名始终以文字出现。
+
+**后台（`market/web/admin.html` + `admin.js`）**：`.toolbar` 换成 `.announcement-admin-head`（eyebrow `LINGPET BROADCAST` + 衬线标题 + 说明 + 右侧计数胶囊与主按钮）；`.records` 的长条 `.record` 换成 `.announcement-grid` 卡片网格（`repeat(auto-fill,minmax(320px,1fr))`，底部的 `.announcement-card-foot` 用 `margin-top:auto` 对齐），卡片内含级别/状态/强弹胶囊、衬线标题、3 行正文、版本/展示/外链三行元信息、更新时间与胶囊按钮。发布对话框改成两栏：左侧标题/正文/级别单选卡/外链，右侧「桌面端预览」+ 版本范围 + 展示时间；`#announcementForm` 的 `max-width` 归零，`#announcementDialog` 宽度提到 `min(1040px, 100vw - 40px)`。级别用 `input[type=radio]` 而不是下拉，`form.elements.level.value` 与 `FormData` 用法保持不变；`syncAnnouncementPreview()` 在 `input`/`change` 与 `openAnnouncement()` 时刷新右侧预览。
+
+**级联坑（下次改后台对话框务必遵守）**：`site.css` 与 `refine.css` 都有全局的 `header,main,footer{width:min(…);margin:auto;padding-inline:…}` 和 `header{display:flex;border-bottom}`、`footer{border-top;margin-top:48px}`。对话框和卡片里一旦用 `<header>`/`<footer>` 元素，就会被这些全局规则命中（症状：胶囊被推右 48px、标题上方多一条线、底部按钮靠左）。公告内部一律用 `<div class="announcement-dialog-head">` / `<div class="announcement-card-foot">` 这类 `div` + class，语义靠 `aria`/角色补，不靠标签名。
+
+**桌面端（`desktop/announcements-ui.js` + `settings.css`）**：顶部公告条从 `<aside>` 改成 `<section role="region">`（`desktop/workbench.css` 把全局 `aside` 定成 218px 固定侧栏，用 `aside` 会把公告条变成侧栏、页面布局全塌），并在 CSS 里显式 `position:relative;inset:auto;width:auto` 兜底。公告条 = 3px 色条 + 圆形级别字 + 级别胶囊 + 未读数 + 时间 + 标题 + 2 行正文 + 「知道了 / 查看公告」；阅读弹层 = 顶部 3px 级别色条、级别胶囊与时间、衬线标题、可滚动正文（保留换行）、虚线页脚（提示语 + 外链按钮 + 主按钮），强制弹窗隐藏关闭按钮、Esc 不可关。级别胶囊两处都用 `TAGS`（普通/重要/紧急），与后台一致。
+
+**验证**：用 `artifacts/_announce-preview.cjs`（Electron + 本地 mock 市场接口 + mock `window.pet.market`）截了改版前后、纸感/暖夜两套主题、1440/820/880 三档宽度、列表/空态/新建/编辑/横幅/阅读弹层/强制弹窗共 14 张图，放在 `artifacts/announcements-ui/{before,after}/`；`node --test test/announcements.test.js`、`npm run check`、`go -C market test ./...` 全绿。
+
+**已知取舍**：截图在无头（`show:false`）窗口里拍，`::backdrop` 与 CSS 动画不推进，所以弹层遮罩是用 `getComputedStyle(dialog,'::backdrop')` 核对的（实际值 `rgba(0,0,0,.35)`，来自 `workbench-motion.css` 的入场动画；`settings.css` 里把公告弹层遮罩定为 46% 黑）。

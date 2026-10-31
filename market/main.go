@@ -99,7 +99,8 @@ func main() {
 	if e != nil {
 		log.Fatal(e)
 	}
-	s := &Server{cfg: cfg, store: store, client: client, github: &githubClient{client: client, token: cfg.GitHubToken, routes: routes}}
+	gateway := &githubClient{client: client, token: cfg.GitHubToken, routes: routes}
+	s := &Server{cfg: cfg, store: store, client: client, github: gateway, desktopLoader: gateway.latestDesktopRelease}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	workerDone := make(chan struct{})

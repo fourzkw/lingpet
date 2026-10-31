@@ -8,6 +8,7 @@ import {CHARACTERS,VARIANTS,characterInfo,appearanceInfo,appearanceLabel} from '
 import {PET_SCALES,scaleStep,scaleLabel,petIsVisible,visibilityPatch} from '../src/pet-display.js';
 import {initSettingsExtras} from './settings-extras.js';
 import {initOnboarding} from './onboarding.js';
+import {initAnnouncements} from './announcements-ui.js';
 import {initIntegrationsUI} from './integrations-ui.js';
 await readyPixelAssets();
 let data=await window.pet.get(),start=performance.now()-Math.max(0,Date.now()-(data.animationStartedAt??Date.now())),previous=data.animationKey,toastTimer,petListSignature='',pendingSessionSelection=false,pendingRemovalId=null;
@@ -178,4 +179,4 @@ frameLoop(now=>{
 });
 
 marketUI=initMarketUI({snapshot:()=>data,update,toast});
-extras=initSettingsExtras({snapshot:()=>data,change,toast});onboarding=initOnboarding({snapshot:()=>data,integrations:()=>integrationsUI.getState()});document.addEventListener('lingpet:theme',event=>update(event.detail));update(data);
+extras=initSettingsExtras({snapshot:()=>data,change,toast});onboarding=initOnboarding({snapshot:()=>data,integrations:()=>integrationsUI.getState()});initAnnouncements({toast});document.addEventListener('lingpet:theme',event=>update(event.detail));update(data);

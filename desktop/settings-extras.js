@@ -15,13 +15,15 @@ export function initSettingsExtras({snapshot,change,toast}){
   for(const key of ['clickResponse','headPat','interactionHints'])$(key).onchange=()=>change({[key]:$(key).checked});
   $('patSensitivity').onchange=()=>change({patSensitivity:$('patSensitivity').value});
   const appPanel=document.createElement('details');appPanel.className='panel system-panel';
-  appPanel.innerHTML='<summary>应用与诊断 <span id="appVersion" class="quiet"></span></summary><div class="option-row"><label for="launchAtLogin">开机启动<span id="loginSupportHint">登录系统后自动恢复桌宠</span></label><input id="launchAtLogin" type="checkbox" class="switch"></div><p id="appUpdateStatus" role="status" class="section-description"></p><div class="dialog-actions"><button id="installAppUpdate" class="button secondary">从本地更新包安装</button><button id="refreshDiagnostics" class="button secondary">刷新诊断</button><button id="exportDiagnostics" class="button secondary">导出诊断</button></div><p class="quiet">更新包需先解压，选择包含 package.json 的灵伴目录。诊断不包含聊天正文、会话编号或投稿凭证。</p><pre id="diagnosticSummary" class="diagnostic-summary"></pre>';
+  appPanel.innerHTML='<summary>版本与诊断 <span id="appVersion" class="quiet"></span></summary><div id="updateBanner" class="update-banner" hidden><div class="update-banner-head"><span class="update-banner-tag">可更新</span><strong id="updateBannerVersion"></strong></div><p id="updateNotes" class="update-notes"></p></div><div class="option-row"><label for="launchAtLogin">开机启动<span id="loginSupportHint">登录系统后自动恢复桌宠</span></label><input id="launchAtLogin" type="checkbox" class="switch"></div><p id="appUpdateStatus" role="status" class="section-description"></p><div id="updateProgress" class="update-progress" hidden><progress id="updateProgressBar" max="100" value="0"></progress><span id="updateProgressText" class="quiet"></span></div><div class="dialog-actions"><button id="installAppUpdate" class="button primary" hidden>下载并安装更新</button><button id="checkAppUpdate" class="button secondary">检查更新</button><button id="refreshDiagnostics" class="button secondary">刷新诊断</button><button id="exportDiagnostics" class="button secondary">导出诊断</button></div><p id="updateHint" class="quiet">发现新版本后在此一键下载并安装：会先校验安装包，再自动重启完成升级；配置、桌宠与形象都会保留。</p><pre id="diagnosticSummary" class="diagnostic-summary"></pre>';
   const recoveryPanel=document.createElement('section');recoveryPanel.className='panel';
   recoveryPanel.innerHTML='<h2>配置备份与恢复</h2><p id="settingsRecovery" role="status" class="section-description">配置自动备份，可恢复上一次保存前的有效设置。</p><div class="dialog-actions"><button id="restoreSettings" class="button secondary">恢复配置备份</button><button id="openSettingsFolder" class="button secondary">打开配置文件夹</button></div>';
   const appView=document.createElement('section');appView.id='appView';appView.hidden=true;
   if(snapshot().distribution==='desktop'){
-    appPanel.querySelector('#installAppUpdate').textContent='本体升级说明';
-    appPanel.querySelector('p.quiet').textContent='本体由独立安装程序升级。升级前从托盘退出灵伴；用户配置与形象会保留。诊断不包含聊天正文或凭证。';
+    appPanel.querySelector('#updateHint').textContent='发现新版本后在这里一键下载并安装：会先校验安装包，再自动重启完成升级；配置、桌宠与形象都会保留。诊断不包含聊天正文、会话编号或投稿凭证。';
+  }else{
+    appPanel.querySelector('#checkAppUpdate').hidden=true;
+    appPanel.querySelector('#updateHint').textContent='更新包需先解压，选择包含 package.json 的灵伴目录。诊断不包含聊天正文、会话编号或投稿凭证。';
   }
   appView.innerHTML='<header><div><div class="eyebrow">灵伴 / 偏好设置</div><h1>应用设置</h1><p class="sub">管理界面偏好、创作服务与应用维护。</p></div></header><section class="panel theme-panel"><div class="panel-heading"><h2>界面主题</h2><span class="quiet">自动保存 · 所有桌宠共用</span></div><p class="section-description">选择喜欢的桌面氛围。角色的原图／像素版本在工作台单独设置。</p><div id="themeChoices" class="theme-grid" role="group" aria-label="界面主题"></div><p id="themeStatus" role="status" class="quiet"></p></section>';
   const tabs=document.createElement('div');tabs.className='app-settings-tabs';tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label','设置分类');
@@ -43,13 +45,51 @@ export function initSettingsExtras({snapshot,change,toast}){
   for(const theme of UI_THEMES){const button=document.createElement('button');button.className='theme-card';button.dataset.themeChoice=theme.id;button.setAttribute('aria-pressed','false');const art=document.createElement('div');art.className='theme-swatch';for(const color of theme.swatches){const swatch=document.createElement('i');swatch.style.backgroundColor=color;art.append(swatch);}const title=document.createElement('strong');title.textContent=theme.name+(theme.id==='paper-journal'?' · 默认':'');const description=document.createElement('span');description.textContent=theme.description;button.append(art,title,description);button.onclick=async()=>{for(const b of $('themeChoices').children)b.disabled=true;try{const next=await window.pet.system({action:'theme',theme:theme.id});changeTheme(next);toast('已切换为'+theme.name);}catch(error){toast(error.message);}finally{for(const b of $('themeChoices').children)b.disabled=false;}};$('themeChoices').append(button);}
   function changeTheme(next){document.dispatchEvent(new CustomEvent('lingpet:theme',{detail:next}));}
 
-  function progress(value){$('appUpdateStatus').textContent=value.message;$('installAppUpdate').disabled=['validating','installing','restarting'].includes(value.phase);}
+  function updateFacts(value){
+    const phase=value?.phase||value?.update?.phase||'idle';
+    const check=value?.update?.available!==undefined?value.update:value?.updateCheck||null;
+    return {phase,check};
+  }
+  function renderUpdate(value){
+    const {phase,check}=updateFacts(value);
+    const available=Boolean(check?.available)||phase==='available';
+    const version=check?.version||(phase==='available'?value.update?.version:null)||'';
+    const nav=document.getElementById('openAppSettings'),tab=document.getElementById('settings-tab-maintenance');
+    nav?.classList.toggle('has-update',available);tab?.classList.toggle('has-update',available);
+    $('updateBanner').hidden=!available;
+    if(available){
+      $('updateBannerVersion').textContent='v'+version;
+      const notes=String(check?.notes||'').trim();
+      $('updateNotes').textContent=notes||'本次更新包含体验与稳定性改进。';
+      $('checkAppUpdate').textContent='重新检查';
+    }else{
+      $('checkAppUpdate').textContent='检查更新';
+    }
+  }
+  function progress(value){
+    const {phase,check}=updateFacts(value);
+    $('appUpdateStatus').textContent=value?.message||'';
+    const percent=Number(value?.progress?.percent??0);
+    const busy=['downloading','verifying','validating','installing','restarting'].includes(phase);
+    const showBar=phase==='downloading'||phase==='verifying';
+    $('updateProgress').hidden=!showBar;
+    if(showBar){
+      $('updateProgressBar').value=percent;
+      $('updateProgressText').textContent=value.progress?.route?percent+'% · '+value.progress.route:percent+'%';
+    }
+    $('installAppUpdate').disabled=busy||!check?.available;
+    $('installAppUpdate').hidden=!check?.available;
+    $('checkAppUpdate').disabled=busy;
+    if(check?.available)$('installAppUpdate').textContent='下载并安装 v'+check.version;
+    renderUpdate(value);
+  }
   let recoveryShown=false;
-  async function refresh(){try{const value=await window.pet.system({action:'status'});document.getElementById('storageLocation').textContent=value.storage?.path||'尚未获取目录';document.getElementById('changeContentFolder').disabled=value.distribution!=='desktop';$('appVersion').textContent='v'+value.version;const recovery=value.settingsRecovery;if(recovery&&!recoveryShown){recoveryShown=true;navigate('app');selectSettings('maintenance');recoveryPanel.scrollIntoView({block:'center'});}$('settingsRecovery').textContent=recovery?(recovery.source==='backup'?'配置损坏或丢失，已从有效备份自动恢复。':recovery.source==='manual'?'已恢复配置备份。':'配置与备份不可用，已使用默认设置。')+(recovery.preserved?' 原配置已保留：'+recovery.preserved:''):'配置自动备份，可恢复上一次保存前的有效设置。';$('launchAtLogin').checked=value.login;$('launchAtLogin').disabled=!value.loginSupported;if(!value.loginSupported)$('loginSupportHint').textContent='当前平台暂不支持';progress(value.update);$('diagnosticSummary').textContent=`运行 ${Math.floor(value.uptimeSeconds/60)} 分钟 · 桌宠 ${value.pets.length} 只\n连接 ${value.connections.connected}/${value.connections.total} · 来源 ${value.connections.sources.join('、')||'暂无'}\n主进程内存 ${Math.round(value.memory.rss/1048576)} MiB\n`+(value.logs.length?value.logs.map(e=>e.time+' '+e.area+'：'+e.message).join('\n'):'本次运行未记录异常');}catch(error){$('appUpdateStatus').textContent=error.message;}}
+  async function refresh(){try{const value=await window.pet.system({action:'status'});document.getElementById('storageLocation').textContent=value.storage?.path||'尚未获取目录';document.getElementById('changeContentFolder').disabled=value.distribution!=='desktop';$('appVersion').textContent='v'+value.version;const recovery=value.settingsRecovery;if(recovery&&!recoveryShown){recoveryShown=true;navigate('app');selectSettings('maintenance');recoveryPanel.scrollIntoView({block:'center'});}$('settingsRecovery').textContent=recovery?(recovery.source==='backup'?'配置损坏或丢失，已从有效备份自动恢复。':recovery.source==='manual'?'已恢复配置备份。':'配置与备份不可用，已使用默认设置。')+(recovery.preserved?' 原配置已保留：'+recovery.preserved:''):'配置自动备份，可恢复上一次保存前的有效设置。';$('launchAtLogin').checked=value.login;$('launchAtLogin').disabled=!value.loginSupported;if(!value.loginSupported)$('loginSupportHint').textContent='当前平台暂不支持';progress({...value.update,updateCheck:value.updateCheck,current:value.version});$('diagnosticSummary').textContent=`运行 ${Math.floor(value.uptimeSeconds/60)} 分钟 · 桌宠 ${value.pets.length} 只\n连接 ${value.connections.connected}/${value.connections.total} · 来源 ${value.connections.sources.join('、')||'暂无'}\n主进程内存 ${Math.round(value.memory.rss/1048576)} MiB\n`+(value.logs.length?value.logs.map(e=>e.time+' '+e.area+'：'+e.message).join('\n'):'本次运行未记录异常');}catch(error){$('appUpdateStatus').textContent=error.message;}}
   window.pet.onSystemUpdate(progress);$('refreshDiagnostics').onclick=refresh;appPanel.ontoggle=()=>{if(appPanel.open)void refresh();};
   $('launchAtLogin').onchange=async()=>{const input=$('launchAtLogin');input.disabled=true;try{await window.pet.system({action:'login',enabled:input.checked});toast('开机启动设置已保存');}catch(error){toast(error.message);}finally{await refresh();}};
   $('exportDiagnostics').onclick=async()=>{try{const result=await window.pet.system({action:'export-diagnostics'});if(!result.cancelled)toast('诊断已导出：'+result.path);}catch(error){toast(error.message);}};
-  $('installAppUpdate').onclick=async()=>{try{const result=await window.pet.system({action:'install-update'});if(result.cancelled)return;await refresh();}catch(error){$('appUpdateStatus').textContent=error.message;await refresh();}};
+  $('checkAppUpdate').onclick=async()=>{const button=$('checkAppUpdate');button.disabled=true;$('appUpdateStatus').textContent='正在检查更新…';try{const result=await window.pet.system({action:'check-update'});if(result?.update?.available)toast('发现新版本 v'+result.update.version);else toast('当前已是最新版本');}catch(error){$('appUpdateStatus').textContent=error.message;}finally{button.disabled=false;await refresh();}};
+  $('installAppUpdate').onclick=async()=>{const button=$('installAppUpdate');button.disabled=true;try{const result=await window.pet.system({action:'install-update'});if(result?.upToDate){toast('当前已是最新版本');return;}if(result?.cancelled)return;if(result?.installing)$('appUpdateStatus').textContent='正在重启灵伴完成升级…';await refresh();}catch(error){$('appUpdateStatus').textContent=error.message;}finally{await refresh();button.disabled=false;}};
   $('restoreSettings').onclick=async()=>{const button=$('restoreSettings');button.disabled=true;try{const result=await window.pet.system({action:'restore-settings'});if(!result.cancelled){toast('已恢复配置备份');await refresh();}}catch(error){toast(error.message);}finally{button.disabled=false;}};
   $('openSettingsFolder').onclick=async()=>{try{await window.pet.system({action:'open-settings-folder'});}catch(error){toast(error.message);}};
   void refresh();

@@ -33,6 +33,7 @@ import {MarketService} from './market/service.js';
 import {configureLoginStartup} from './login-startup.js';
 import {diagnosticReport} from './diagnostics.js';
 import {installPetpack} from './market/package.js';
+import {downloadInstaller,launchInstaller} from './update/desktop-update.js';
 import {SettingsStore} from './settings-store.js';
 import {IntegrationManager} from './integrations/manager.js';
 import {startIntegrationGateway} from './integrations/gateway.js';
@@ -59,11 +60,70 @@ export async function launchDesktop(dir){
   let activePetId=registry.pets[0]?.id??null,settingsWindow,settingsReady,settingsDisplayReady=false,quickWindow,quickPetId,tray,server,quitting=false,updating=false,movingStorage=false;
   let contentRoot=PACKAGE_ROOT,release=await describeRelease(),saveQueue=Promise.resolve();
   const integrations=new IntegrationManager({dir,root:PACKAGE_ROOT,bridge:path.join(installRoot,'LingPetBridge.exe'),version:release.version});let integrationGateway;
-  const recentErrors=[],updateFile=path.join(dir,'update-status.json');let updateStatus={phase:'idle',message:'尚未进行本地更新'};
+  const recentErrors=[],updateFile=path.join(dir,'update-status.json'),updateCheckFile=path.join(dir,'update-check.json'),updatesDir=path.join(dir,'updates');let updateStatus={phase:'idle',message:'尚未进行本地更新'},updateCheck=null,checkingUpdate=false;
   function recordError(area,error){recentErrors.push({time:new Date().toISOString(),area,message:String(error.message??error).slice(0,500)});if(recentErrors.length>30)recentErrors.shift();}
   if(settingsStore.recovery)recordError('配置恢复',settingsStore.recovery.source==='backup'?'配置损坏或丢失，已从最近有效备份恢复':'配置与备份不可用，已保留损坏文件并使用默认配置');
-  async function updateProgress(phase,message,version=release.version){updateStatus={phase,message,version,time:Date.now()};await writeFile(updateFile,JSON.stringify(updateStatus));liveContents(settingsWindow)?.send('pet:system-update',updateStatus);}
+  function updateSnapshot(){return {...updateStatus,current:release.version,update:updateCheck,distribution:desktop?'desktop':'plugin'};}
+  function pushUpdate(){liveContents(settingsWindow)?.send('pet:system-update',updateSnapshot());}
+  async function updateProgress(phase,message,version=release.version,extra={}){
+    updateStatus={phase,message,version,time:Date.now(),...extra};
+    await writeFile(updateFile,JSON.stringify(updateStatus));
+    pushUpdate();
+  }
+  async function checkUpdate({manual=false}={}){
+    if(!desktop)return null;
+    if(checkingUpdate)return updateCheck;
+    if(!manual&&['downloading','verifying','installing','restarting'].includes(updateStatus.phase))return updateCheck;
+    checkingUpdate=true;
+    try{
+      const offered=await market.desktopRelease();
+      const available=compareVersions(offered.version,release.version)>0;
+      updateCheck={available,version:offered.version,current:release.version,checkedAt:Date.now(),notes:offered.notes||'',releaseURL:offered.releaseURL,release:offered};
+      await writeFile(updateCheckFile,JSON.stringify(updateCheck)).catch(()=>{});
+      if(available)await updateProgress('available','发现新版本 v'+offered.version,offered.version);
+      else if(['available','error'].includes(updateStatus.phase))await updateProgress('idle','当前已是最新版本');
+      else pushUpdate();
+      trayMenu();
+      return updateCheck;
+    }catch(error){
+      recordError('检查更新',error);
+      updateCheck={...updateCheck,available:false,checkedAt:Date.now(),error:String(error.message??error)};
+      if(!['downloading','verifying','installing','restarting'].includes(updateStatus.phase))await updateProgress('error',manual?'检查更新失败：'+updateCheck.error:'暂时无法检查更新');
+      trayMenu();
+      return updateCheck;
+    }finally{checkingUpdate=false;}
+  }
+  async function installDesktopUpdate(){
+    if(!desktop)throw new Error('本体由独立安装程序维护');
+    if(updating||['downloading','verifying','installing','restarting'].includes(updateStatus.phase))throw new Error('正在处理更新，请稍候');
+    if(!updateCheck?.available)await checkUpdate({manual:true});
+    if(!updateCheck?.available){await updateProgress('idle','当前已是最新版本');return {upToDate:true,update:updateCheck};}
+    const offered=updateCheck.release;
+    updating=true;
+    try{
+      await updateProgress('downloading','正在连接下载线路…',offered.version,{progress:{percent:0,transferred:0,total:offered.bytes||0,route:''}});
+      const saved=await downloadInstaller(offered,{directory:updatesDir,onProgress:value=>{
+        const total=value.total||offered.bytes||0,percent=total?Math.min(100,Math.round(value.transferred/total*100)):0;
+        updateStatus={...updateStatus,phase:value.phase==='verifying'?'verifying':'downloading',message:value.phase==='verifying'?'正在校验安装包…':'正在下载安装程序 '+percent+'%',version:offered.version,time:Date.now(),progress:{percent,transferred:value.transferred,total,route:value.route||''}};
+        pushUpdate();
+      }});
+      await updateProgress('installing','正在校验安装包并准备升级…',offered.version);
+      launchInstaller({exePath:saved.path,installRoot,dataDir:dir});
+      await updateProgress('restarting','正在重启灵伴完成升级…',offered.version);
+      quitting=true;
+      setTimeout(async()=>{await saveQueue.catch(()=>{});await integrationGateway?.close().catch(()=>{});await server?.close().catch(()=>{});app.quit();},400);
+      return {installing:true,version:offered.version,path:saved.path};
+    }catch(error){
+      updating=false;recordError('下载更新',error);
+      await updateProgress('error',String(error.message??error));
+      throw error;
+    }
+  }
   try{updateStatus=JSON.parse(await readFile(updateFile,'utf8'));if(updateStatus.phase==='restarting')await updateProgress(updateStatus.version===release.version?'ready':'error',updateStatus.version===release.version?'更新已完成':'新版启动未完成，已恢复当前版本，可重新选择更新包');else if(['validating','installing'].includes(updateStatus.phase))await updateProgress('error','上次更新未完成，当前版本仍可使用，可重新选择更新包');}catch{}
+  if(desktop)try{
+    const saved=JSON.parse(await readFile(updateCheckFile,'utf8'));
+    if(saved&&saved.available&&compareVersions(saved.version,release.version)>0)updateCheck=saved;
+  }catch{}
   function configureLogin(enabled){return configureLoginStartup(app,{enabled,executable:desktop?path.join(installRoot,'LingPet.exe'):app.getPath('exe'),root:contentRoot,packaged:desktop||app.isPackaged});}
   if(registry.config.global.launchAtLogin)try{configureLogin(true);}catch(error){recordError('开机启动',error);}
   const resumeFile=path.join(dir,'runtime-restart.json');
@@ -220,7 +280,7 @@ export async function launchDesktop(dir){
     if(body?.action==='generation-video-remove')return new GenerationAPISettings(dir).removeVideo(body.id);
     if(body?.action==='status'||body?.action==='diagnostics'){
       const report=diagnosticReport({release,pets:registry.pets,sessions:store.snapshot().sessions,uptime:process.uptime(),memory:process.memoryUsage(),logs:recentErrors,update:updateStatus,platform:process.platform,login:registry.config.global.launchAtLogin});
-      return {...report,storage:await desktopStorage(dir),distribution:desktop?'desktop':'plugin',settingsRecovery:settingsStore.recovery,loginSupported:process.platform==='win32'||process.platform==='darwin'&&app.isPackaged};
+      return {...report,storage:await desktopStorage(dir),distribution:desktop?'desktop':'plugin',settingsRecovery:settingsStore.recovery,updateCheck,loginSupported:process.platform==='win32'||process.platform==='darwin'&&app.isPackaged};
     }
     if(body?.action==='change-storage'){
       if(!desktop)throw Error('请使用独立本体安装版修改内容目录');
@@ -254,8 +314,12 @@ export async function launchDesktop(dir){
       const report=diagnosticReport({release,pets:registry.pets,sessions:store.snapshot().sessions,uptime:process.uptime(),memory:process.memoryUsage(),logs:recentErrors,update:updateStatus,platform:process.platform,login:registry.config.global.launchAtLogin});
       const selected=await dialog.showSaveDialog(settingsWindow,{title:'导出运行诊断',defaultPath:'lingpet-diagnostics.json',filters:[{name:'运行诊断',extensions:['json']}]});if(selected.canceled)return {cancelled:true};await writeFile(selected.filePath,JSON.stringify(report,null,2));return {path:selected.filePath};
     }
+    if(body?.action==='check-update'){
+      const result=await checkUpdate({manual:true});
+      return {current:release.version,update:result};
+    }
     if(body?.action==='install-update'){
-      if(desktop)throw Error('请先从托盘退出灵伴，再运行新版 LingPet 安装程序升级；桌宠配置与形象会保留。');
+      if(desktop)return installDesktopUpdate();
       if(updating||['validating','installing'].includes(updateStatus.phase))throw new Error('正在更新，请稍候');
       const selected=await dialog.showOpenDialog(settingsWindow,{title:'选择已解压的灵伴更新包目录',properties:['openDirectory']});if(selected.canceled)return {cancelled:true};
       try{await updateProgress('validating','正在校验更新包…');const offered=await describeRelease(selected.filePaths[0]);if(compareVersions(offered.version,release.version)<=0)throw new Error('请选择比当前版本更新的安装包');return await updateRuntime({root:offered.root});}catch(error){recordError('安装更新',error);const message=error.code==='ENOENT'?'所选目录不是完整的灵伴更新包，请选择解压后的程序目录。':error.message;await updateProgress('error',message);throw new Error(message);}
@@ -307,6 +371,14 @@ export async function launchDesktop(dir){
       const selected=await dialog.showSaveDialog(settingsWindow,{title:'保存投稿凭证',defaultPath:'lingpet-submission-'+receipt.id.slice(0,8)+'.json',filters:[{name:'投稿凭证',extensions:['json']}]});if(selected.canceled)return {cancelled:true};await writeFile(selected.filePath,JSON.stringify(receipt,null,2),{mode:0o600});return {saved:true,path:selected.filePath};
     }
     if(body?.action==='open'){const {url}=await market.config();const target=new URL('/market',url);if(body.versionId){if(!/^[a-f0-9]{48}$/.test(body.versionId))throw new Error('无效版本编号');target.searchParams.set('version',body.versionId);}await shell.openExternal(target.href);return {opened:true};}
+    if(body?.action==='announcements')return market.announcements({appVersion:release.version.split('-')[0]});
+    if(body?.action==='announcement-read')return market.markAnnouncementRead(body.id);
+    if(body?.action==='announcement-link'){
+      const value=await market.announcements({appVersion:release.version.split('-')[0]});
+      const item=value.items.find(row=>row.id===body.id);if(!item?.link)throw new Error('公告链接不可用');
+      const target=new URL(item.link);if(!['http:','https:'].includes(target.protocol)||target.username||target.password)throw new Error('无效公告链接');
+      await shell.openExternal(target.href);return {opened:true};
+    }
     if(body?.action==='export'){
       const pet=structuredClone(registry.require(body.petId||activePetId));const result=await market.export(pet,body.details||{});const selected=await dialog.showSaveDialog(settingsWindow,{title:'导出桌宠分享包',defaultPath:result.name,filters:[{name:'灵伴桌宠包',extensions:['petpack']}]});if(selected.canceled)return {cancelled:true};await writeFile(selected.filePath,result.bytes);return {exported:true,path:selected.filePath,sha256:result.sha256,size:result.bytes.length};
     }
@@ -344,12 +416,14 @@ export async function launchDesktop(dir){
       context.dragTimer=setInterval(()=>{if(!liveContents(context.window)){stopDrag(context,false);return;}move(screen.getCursorScreenPoint());if(++ticks>750)stopDrag(context);},16);
     }else if(!start)stopDrag(context);
   });
-  function trayMenu(){if(!tray)return;tray.setContextMenu(Menu.buildFromTemplate([
+  function trayMenu(){if(!tray)return;const items=[
     {label:'打开多桌宠工作台',click:()=>openSettings()},
     {label:'新增桌宠',click:()=>{manage({action:'create',value:{name:'新桌宠'}});openSettings(activePetId);}},
     {label:'显示所有桌宠',click:()=>{for(const p of registry.pets)registry.update(p.id,visibilityPatch(true));}},
-    {type:'separator'},{label:'退出全部桌宠',click:quitAll},
-  ]));}
+  ];
+  if(desktop)items.push({type:'separator'},{label:updateCheck?.available?'发现新版本 v'+updateCheck.version+' · 查看':'检查更新…',click:()=>{openSettings();void checkUpdate({manual:true});}});
+  items.push({type:'separator'},{label:'退出全部桌宠',click:quitAll});
+  tray.setContextMenu(Menu.buildFromTemplate(items));}
   function quitAll(){if(quitting)return;writeFileSync(path.join(dir,'runtime.paused'),'用户已退出全部桌宠');quitting=true;setTimeout(async()=>{await saveQueue.catch(()=>{});await integrationGateway?.close();await server?.close();app.quit();},50);}
   registry.on('change',()=>{syncWindows();trayMenu();void save();broadcast();});
   store.on('change',()=>{
@@ -359,6 +433,11 @@ export async function launchDesktop(dir){
   });syncWindows();await save();
   tray=new Tray(nativeImage.createFromPath(path.join(PACKAGE_ROOT,'assets/tray.png')));tray.setToolTip('灵伴 · 多桌宠');trayMenu();tray.on('double-click',()=>openSettings());
   let confirming=false,lastConfirmation=0;
+  const quietSmoke=Boolean(process.env.BOARD_PET_SMOKE||process.env.BOARD_PET_LIFECYCLE_SMOKE||process.env.BOARD_PET_MULTI_SMOKE);
+  if(desktop&&!quietSmoke){
+    setTimeout(()=>{void checkUpdate();},20000);
+    setInterval(()=>{void checkUpdate();},6*60*60*1000);
+  }
   const tick=setInterval(()=>{store.tick();broadcast();if(!desktop&&!confirming&&Date.now()-lastConfirmation>5000){confirming=true;lastConfirmation=Date.now();void confirmRunningSharedRuntime(dir).catch(error=>recordError('运行版本同步',error)).finally(()=>{confirming=false;});}},1000);
   async function updateRuntime(body){
     if(desktop)throw Error('本体由独立安装程序维护，请运行新版 LingPet 安装程序');

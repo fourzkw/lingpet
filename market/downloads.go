@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -81,7 +82,24 @@ func (s *Server) legacyDownloadManifest() (DownloadManifest, error) {
 const desktopReleaseURL = "https://github.com/fourzkw/lingpet/releases/latest"
 
 func (s *Server) listDownloads(w http.ResponseWriter, r *http.Request) {
-	respond(w, 200, map[string]any{"provider": "github", "releaseURL": desktopReleaseURL, "downloads": []map[string]any{{"id": "desktop", "name": "灵伴桌面版", "url": "/downloads/desktop"}}})
+	payload := map[string]any{
+		"provider":   "github",
+		"releaseURL": desktopReleaseURL,
+		"downloads":  []map[string]any{{"id": "desktop", "name": "灵伴桌面版", "url": "/downloads/desktop"}},
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), desktopReleaseTimeout+time.Second)
+	defer cancel()
+	if release, e := s.desktopRelease(ctx); e == nil {
+		payload["desktop"] = release
+		payload["downloads"] = []map[string]any{{
+			"id":      "desktop",
+			"name":    "灵伴桌面版",
+			"url":     "/downloads/desktop",
+			"version": release.Version,
+			"size":    release.Bytes,
+		}}
+	}
+	respond(w, 200, payload)
 }
 
 func (s *Server) serveDownload(w http.ResponseWriter, r *http.Request) {
@@ -92,8 +110,14 @@ func (s *Server) serveDownload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		_ = s.store.metric("download.desktop", 0)
 	}
+	target := desktopReleaseURL
+	ctx, cancel := context.WithTimeout(r.Context(), desktopReleaseTimeout+time.Second)
+	defer cancel()
+	if release, e := s.desktopRelease(ctx); e == nil && release.URL != "" {
+		target = release.URL
+	}
 	w.Header().Set("Cache-Control", "no-store")
-	http.Redirect(w, r, desktopReleaseURL, http.StatusFound)
+	http.Redirect(w, r, target, http.StatusFound)
 }
 
 func (s *Server) retiredInstallerManagement(w http.ResponseWriter, r *http.Request) {

@@ -41,6 +41,11 @@ type Server struct {
 	store        *Store
 	github       GitHub
 	client       *http.Client
+
+	desktopMu     sync.Mutex
+	desktop       desktopRelease
+	desktopAt     time.Time
+	desktopLoader func(context.Context) (desktopRelease, error)
 }
 
 func (s *Server) admin(login string) bool {
@@ -121,6 +126,11 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /api/admin/releases", s.retiredInstallerManagement)
 	mux.HandleFunc("POST /api/admin/releases/upload", s.retiredInstallerManagement)
 	mux.HandleFunc("POST /api/admin/releases/{id}/{action}", s.retiredInstallerManagement)
+	mux.HandleFunc("GET /api/announcements", s.listPublicAnnouncements)
+	mux.HandleFunc("GET /api/admin/announcements", s.adminListAnnouncements)
+	mux.HandleFunc("POST /api/admin/announcements", s.adminCreateAnnouncement)
+	mux.HandleFunc("POST /api/admin/announcements/{id}", s.adminUpdateAnnouncement)
+	mux.HandleFunc("POST /api/admin/announcements/{id}/{action}", s.adminAnnouncementAction)
 	mux.HandleFunc("GET /api/admin/audit", s.adminAudit)
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		respond(w, 200, map[string]any{"ok": true, "service": "lingpet-market", "version": strings.TrimSpace(marketVersion), "formatVersion": 1})

@@ -40,6 +40,7 @@ internal static class Setup {
       if(label!=null){label.Text="正在校验，自动退出运行中的灵伴并安装…";Application.DoEvents();}
       using(var process=Process.Start(start)){var errors=process.StandardError.ReadToEndAsync();var output=process.StandardOutput.ReadToEndAsync();while(!process.WaitForExit(100)){if(!silent)Application.DoEvents();}output.Wait();if(progress!=null)progress.Close();if(process.ExitCode!=0)throw new Exception(String.IsNullOrWhiteSpace(errors.Result)?"安装进程异常退出，退出码："+process.ExitCode:errors.Result.Trim());}
       if(!silent){MessageBox.Show("安装完成。可在工作台的「Agent 接入」安装所需插件。","灵伴");Process.Start(Path.Combine(root,"LingPet.exe"),"--dashboard");}
+      else if(Array.IndexOf(args,"--relaunch")>=0){Process.Start(Path.Combine(root,"LingPet.exe"),"--dashboard");}
       return 0;
     }catch(Exception error){string message=error.Message;try{string logs=Path.Combine(Path.GetTempPath(),"LingPet-Setup-Logs");Directory.CreateDirectory(logs);string log=Path.Combine(logs,"setup-"+Guid.NewGuid().ToString("N")+".log");File.WriteAllText(log,"安装目录："+root+Environment.NewLine+"数据目录："+data+Environment.NewLine+error.ToString(),new UTF8Encoding(false));message+=Environment.NewLine+Environment.NewLine+"详细日志："+log;}catch{}if(!silent)MessageBox.Show(message,"灵伴安装失败",MessageBoxButtons.OK,MessageBoxIcon.Error);else Console.Error.WriteLine(message);return 1;}
     finally{try{Directory.Delete(temp,true);}catch{}}

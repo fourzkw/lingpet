@@ -1,8 +1,9 @@
 import {loadCustomAppearances} from '../creation/catalog.js';
-import {readFile,rm} from 'node:fs/promises';
+import {readFile,rm,writeFile,rename} from 'node:fs/promises';
 import {CreationStore,safeId} from '../creation/store.js';
 import path from 'node:path';
 import {save} from '../creation/store.js';
+import {randomUUID} from 'node:crypto';
 import {exportPetpack,installPetpack,readPetpack,LIMITS,resourceFiles,metadata} from './package.js';
 import {withInstallLock} from '../install-lock.js';
 import {STATES} from '../creation/store.js';
@@ -15,7 +16,8 @@ export const DEFAULT_MARKET='https://lingpet.fourzkw.top';
 function marketURL(raw){const u=new URL(raw);if(u.username||u.password||u.search||u.hash||u.pathname!=='/'||!['https:','http:'].includes(u.protocol))throw new Error('市场地址需为 HTTP 或 HTTPS 根地址');return u.origin;}
 export function githubDownloadURL(raw){const u=new URL(raw);if(u.protocol!=='https:'||u.username||u.password||u.port||!['github.com','release-assets.githubusercontent.com','objects.githubusercontent.com','github-releases.githubusercontent.com'].includes(u.hostname))throw new Error('只允许 GitHub Release 下载地址');return u;}
 const DOWNLOAD_ROUTES=[{name:'GitHub 直连',prefix:''},{name:'gh-proxy',prefix:'https://gh-proxy.com/'},{name:'ghfast',prefix:'https://ghfast.top/'}];
-function downloadURL(raw,route){
+export {DOWNLOAD_ROUTES};
+export function downloadURL(raw,route){
  const u=new URL(raw);
  if(route.prefix&&u.href.startsWith(route.prefix)){githubDownloadURL(u.href.slice(route.prefix.length));return u;}
  return githubDownloadURL(raw);
@@ -35,7 +37,21 @@ export class MarketService{
  rememberImages(url,records){for(const r of records){const key=url+'/'+r.id,revision=r.previewRevision||r.updatedAt||'';this.imageRevisions.delete(key);this.imageRevisions.set(key,revision);}while(this.imageRevisions.size>400)this.imageRevisions.delete(this.imageRevisions.keys().next().value);}
  async config(){try{return {url:marketURL(JSON.parse(await readFile(path.join(this.dir,'market.json'),'utf8')).url)};}catch(error){if(error.code==='ENOENT')return {url:DEFAULT_MARKET};throw error;}}
  async configure(url){const result={url:marketURL(url)};await save(path.join(this.dir,'market.json'),result);return result;}
- async api(route,body,origin){const url=origin??(await this.config()).url,res=await this.fetcher(url+route,{redirect:'error',signal:AbortSignal.timeout(route==='/api/submissions'?60000:15000),...(body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})});const value=JSON.parse((await bounded(res,8*1024*1024)).toString('utf8'));if(!res.ok)throw new Error(value.error||'市场请求失败');return value;}
+ async api(route,body,origin){const url=origin??(await this.config()).url,res=await this.fetcher(url+route,{redirect:'error',signal:AbortSignal.timeout(route==='/api/submissions'?60000:route==='/api/downloads'?30000:15000),...(body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})});const value=JSON.parse((await bounded(res,8*1024*1024)).toString('utf8'));if(!res.ok)throw new Error(value.error||'市场请求失败');return value;}
+  async desktopRelease(){
+   const {url}=await this.config(),value=await this.api('/api/downloads',undefined,url),release=value?.desktop;
+   if(!release||typeof release!=='object'||Array.isArray(release))throw new Error('市场暂未提供桌面版发布信息');
+   const version=String(release.version??'').trim();
+   if(!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version))throw new Error('无效的桌面版版本号');
+   const fileName=String(release.fileName??'').trim();
+   if(!/^LingPet-Setup-[0-9A-Za-z._-]+\.exe$/.test(fileName))throw new Error('无效的安装程序文件名');
+   const fileURL=githubDownloadURL(String(release.url??''));
+   const bytes=Number(release.bytes);
+   if(!Number.isSafeInteger(bytes)||bytes<1||bytes>512*1024*1024)throw new Error('无效的安装程序体积');
+   const sha256=String(release.sha256??'').trim().toLowerCase();
+   if(!/^[a-f0-9]{64}$/.test(sha256))throw new Error('无效的安装包校验值');
+   return {version,fileName,url:fileURL.href,bytes,sha256,publishedAt:typeof release.publishedAt==='string'?release.publishedAt:'',notes:typeof release.notes==='string'?release.notes.slice(0,4000):'',releaseURL:typeof value.releaseURL==='string'?value.releaseURL:''};
+  }
  async list(query='',filters={}){const params=new URLSearchParams({q:String(query).slice(0,100)});for(const key of ['sort','style','interaction','recent'])if(filters?.[key])params.set(key,String(filters[key]));const {url}=await this.config(),value=await this.api('/api/pets?'+params,undefined,url);if(!Array.isArray(value))throw new Error('无效市场响应');this.rememberImages(url,value);const installed=await this.installed();return {url,pets:value.slice(0,200).map(r=>({...r,installed:installed.some(e=>(e.marketSources||[e.source]).some(s=>s?.market===url&&s?.versionId===r.id))}))};}
  versionId(value){if(typeof value!=='string'||!/^[a-f0-9]{48}$/.test(value))throw new Error('无效市场版本编号');return value;}
  async detail(versionId){this.versionId(versionId);const {url}=await this.config(),record=await this.api('/api/versions/'+versionId,undefined,url);this.rememberImages(url,[record]);if(record.id!==versionId||record.status!=='approved')throw new Error('该版本尚未上架');metadata(record.pet);if(record.preview)resourceFiles(record.preview);if(record.preview&&(record.preview.tileSize>128||record.preview.original?.tileSize>128))throw new Error('市场预览尺寸超限');return record;}
@@ -140,6 +156,36 @@ export class MarketService{
   return {groups:[...groups.values()],checked:checkUpdates,error};
  }
  export(pet,details){return exportPetpack({dataDir:this.dir,pet,details});}
+ announcementFile(){return path.join(this.dir,'announcements-read.json');}
+ async readAnnouncementState(){
+  try{const value=JSON.parse(await readFile(this.announcementFile(),'utf8'));return {readIds:[...new Set((value.readIds||[]).filter(id=>typeof id==='string'&&/^[a-f0-9]{48}$/.test(id)))].slice(0,200)};}
+  catch(error){if(error.code==='ENOENT'||error instanceof SyntaxError)return {readIds:[]};throw error;}
+ }
+ async writeAnnouncementState(value){
+  const next={readIds:[...new Set((value.readIds||[]).filter(id=>typeof id==='string'&&/^[a-f0-9]{48}$/.test(id)))].slice(0,200)};
+  const temp=path.join(this.dir,'announcements-read-'+randomUUID()+'.tmp');
+  await writeFile(temp,JSON.stringify(next));await rename(temp,this.announcementFile());return next;
+ }
+ async announcements({appVersion}={}){
+  if(appVersion!==undefined&&(typeof appVersion!=='string'||!/^\d+\.\d+\.\d+$/.test(appVersion)))throw new Error('无效应用版本');
+  const {url}=await this.config(),params=new URLSearchParams();
+  if(appVersion)params.set('appVersion',appVersion);
+  let items=[];
+  try{
+   const value=await this.api('/api/announcements'+(params.size?'?'+params:''),undefined,url);
+   if(!Array.isArray(value))throw new Error('无效公告响应');
+   items=value.filter(item=>item&&typeof item.id==='string'&&/^[a-f0-9]{48}$/.test(item.id)&&typeof item.title==='string'&&typeof item.body==='string'&&['info','important','critical'].includes(item.level)).slice(0,20)
+    .map(item=>({id:item.id,title:item.title.slice(0,80),body:item.body.slice(0,4000),level:item.level,forceShow:Boolean(item.forceShow),link:typeof item.link==='string'?item.link.slice(0,500):'',linkLabel:typeof item.linkLabel==='string'?item.linkLabel.slice(0,40):'',updatedAt:item.updatedAt||null}));
+  }catch(error){return {url,items:[],readIds:(await this.readAnnouncementState()).readIds,error:error.message};}
+  const state=await this.readAnnouncementState(),read=new Set(state.readIds);
+  return {url,items:items.map(item=>({...item,read:read.has(item.id)})),readIds:state.readIds};
+ }
+ async markAnnouncementRead(id){
+  if(typeof id!=='string'||!/^[a-f0-9]{48}$/.test(id))throw new Error('无效公告编号');
+  const state=await this.readAnnouncementState();
+  if(!state.readIds.includes(id))state.readIds.unshift(id);
+  return this.writeAnnouncementState(state);
+ }
 }
 
 function installedEntry(entry){

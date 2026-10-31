@@ -8,6 +8,14 @@
 
 源码构建环境与隔离验收见 [开发者构建与验证](desktop-installation.md#开发者构建与验证)。新手安装步骤见 [快速开始](getting-started.md)。发布前还应在正常 Windows 环境验证最终安装程序、真实宿主接入、升级和卸载。
 
+## 发布与内置更新
+
+每个正式 Release 需同时上传 `LingPet-Setup-<版本号>.exe` 与 `release.json`（`version`、`setup`、`sha256`、`bytes`、`codeSigned`），并标记为 Latest。官网 `GET /downloads/desktop` 会解析这两个附件后 302 到安装包文件本身；`GET /api/downloads` 的 `desktop` 字段同时供官网展示版本号和体积。缺任一附件时退回跳转 Release 页面。
+
+桌面端启动后约 20 秒自动检查一次，之后每 6 小时检查；发现新版本只写 `update-status.json`（`phase=available`）并在工作台入口显示红点，不弹窗、不自动下载。用户在「应用设置 → 维护 → 版本与诊断」点击下载后，`src/update/desktop-update.js` 依次尝试 GitHub 直连、`gh-proxy.com`、`ghfast.top`，边下载边计算 sha256，校验体积与摘要后保存到数据目录的 `updates/`。
+
+安装通过安装程序的静默模式完成：以 `--silent --relaunch --root <安装根目录> --data <数据目录>` 启动，安装流程沿用既有校验、锁、版本目录切换、健康检查与回滚；`--relaunch` 会在安装完成后自动重新打开灵伴。因此安装程序必须由同一版本 `scripts/build-desktop.mjs` 构建，`release.json` 的 sha256 与体积须与安装程序一致。
+
 以下资源白名单与许可保留规则继续适用。旧宿主独立包的依赖复制及 Electron 下载规则仅供历史构建维护，不作为当前新用户安装说明。
 
 ## 历史宿主包的运行时规则

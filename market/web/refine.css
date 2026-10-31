@@ -1568,3 +1568,859 @@ nav.admin-nav > button.active {
     border-color: var(--line-strong);
   }
 }
+
+/* ==========================================================================
+   15. 公告：发布工作台与编辑对话框
+   仅使用主题 token，跟随四套主题自动换色。
+   ========================================================================== */
+
+.announcement-admin {
+  display: grid;
+  gap: 16px;
+}
+
+.announcement-admin-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.announcement-admin-intro {
+  display: grid;
+  gap: 6px;
+  max-width: 62ch;
+}
+
+.announcement-admin-intro .eyebrow {
+  margin: 0;
+}
+
+.announcement-admin-intro h2 {
+  margin: 0;
+  font-size: 27px;
+  line-height: 1.35;
+}
+
+.announcement-admin-intro p:last-child {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.75;
+  color: var(--muted);
+}
+
+.announcement-admin-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.announcement-summary {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.announcement-summary-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.announcement-summary-chip strong {
+  font: 600 12.5px/1.2 var(--font-mono);
+  color: var(--text);
+}
+
+.announcement-summary-chip[data-tone="force"] strong {
+  color: var(--state-error);
+}
+
+/* 卡片列表 */
+
+.announcement-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+
+.announcement-card {
+  --announcement-tone: var(--state-thinking);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  padding: 15px 17px 13px 19px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 7px);
+  background: var(--surface);
+  box-shadow: var(--panel-shadow);
+  transition: border-color .18s ease;
+}
+
+.announcement-card:hover {
+  border-color: var(--line-strong);
+}
+
+.announcement-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  border-radius: calc(var(--radius) + 7px) 0 0 calc(var(--radius) + 7px);
+  background: var(--announcement-tone);
+}
+
+.announcement-card[data-level="important"] {
+  --announcement-tone: var(--state-approval);
+}
+
+.announcement-card[data-level="critical"] {
+  --announcement-tone: var(--state-error);
+}
+
+.announcement-card[data-state="draft"] {
+  background: color-mix(in srgb, var(--surface-soft) 42%, var(--surface));
+}
+
+.announcement-card[data-state="draft"]::before {
+  background: color-mix(in srgb, var(--announcement-tone) 42%, var(--line));
+}
+
+.announcement-card-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.announcement-level-chip {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--announcement-tone) 13%, var(--surface));
+  color: var(--announcement-tone);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .08em;
+}
+
+.announcement-state-chip {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 9.5px;
+  letter-spacing: .06em;
+}
+
+.announcement-card[data-state="published"] .announcement-state-chip {
+  border-color: color-mix(in srgb, var(--state-done) 38%, var(--line));
+  color: var(--state-done);
+}
+
+.announcement-force-chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--state-error) 12%, var(--surface));
+  color: var(--state-error);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .06em;
+}
+
+.announcement-card-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 1px 0 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.announcement-card-body {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.75;
+  white-space: pre-line;
+}
+
+.announcement-card-meta {
+  display: grid;
+  gap: 5px;
+  margin: 2px 0 0;
+}
+
+.announcement-card-meta > div {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+}
+
+.announcement-card-meta dt {
+  color: color-mix(in srgb, var(--muted) 82%, var(--text));
+  font: 9.5px/1.6 var(--font-mono);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.announcement-card-meta dd {
+  margin: 0;
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.announcement-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+
+.announcement-card-stamp {
+  color: var(--muted);
+  font: 9.5px/1.6 var(--font-mono);
+  letter-spacing: .04em;
+}
+
+.announcement-card .actions {
+  gap: 6px;
+}
+
+.announcement-card .actions button {
+  min-height: 26px;
+  padding: 3px 11px;
+  border-radius: 999px;
+  font-size: 10.5px;
+}
+
+.announcement-card .actions button.danger {
+  border-color: color-mix(in srgb, var(--state-error) 28%, var(--line-strong));
+  color: var(--state-error);
+}
+
+.announcement-card .actions button.danger:hover {
+  border-color: var(--state-error);
+  background: color-mix(in srgb, var(--state-error) 10%, var(--surface));
+}
+
+.announcement-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 26px 28px;
+  border: 1px dashed var(--line-strong);
+  border-radius: calc(var(--radius) + 7px);
+  background: color-mix(in srgb, var(--surface-soft) 52%, var(--surface));
+}
+
+.announcement-empty strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.announcement-empty p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.7;
+  max-width: 52ch;
+}
+
+/* 编辑对话框 */
+
+#announcementDialog.announcement-dialog {
+  width: min(1040px, calc(100vw - 40px));
+  max-height: 92vh;
+  padding: 0;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: calc(var(--radius) + 8px);
+  box-shadow: 0 30px 90px color-mix(in srgb, var(--text) 32%, transparent);
+}
+
+#announcementDialog::backdrop {
+  background: color-mix(in srgb, var(--text) 44%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+#announcementDialog[open] {
+  animation: announcement-dialog-in .22s ease;
+}
+
+@keyframes announcement-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(.992);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+#announcementForm {
+  display: flex;
+  flex-direction: column;
+  max-width: none;
+  max-height: 92vh;
+  min-height: 0;
+}
+
+.announcement-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 26px 18px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface-soft) 62%, var(--surface));
+}
+
+.announcement-dialog-head .eyebrow {
+  margin: 0 0 6px;
+}
+
+.announcement-dialog-head h2 {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 23px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: .3px;
+}
+
+.announcement-dialog-head p {
+  margin: 0;
+  max-width: 54ch;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.7;
+}
+
+#closeAnnouncement {
+  float: none;
+  flex: none;
+  min-height: 32px;
+  padding: 5px 12px;
+  font-size: 11px;
+}
+
+.announcement-dialog-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.32fr) minmax(0, 1fr);
+  gap: 26px;
+  min-height: 0;
+  padding: 18px 26px 20px;
+  overflow: auto;
+}
+
+.announcement-form-main {
+  display: grid;
+  gap: 15px;
+  align-content: start;
+  min-width: 0;
+}
+
+.announcement-form-side {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  min-width: 0;
+  padding-left: 24px;
+  border-left: 1px solid var(--line);
+}
+
+.announcement-dialog .field {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: .02em;
+}
+
+.announcement-dialog .field input,
+.announcement-dialog .field textarea {
+  width: 100%;
+  margin: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: calc(var(--control-radius) + 5px);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  line-height: 1.6;
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+
+.announcement-dialog .field textarea {
+  min-height: 150px;
+  resize: vertical;
+  line-height: 1.75;
+}
+
+.announcement-dialog .field input:focus-visible,
+.announcement-dialog .field textarea:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.announcement-field-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.announcement-levels {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.announcement-levels legend {
+  margin-bottom: 7px;
+  padding: 0;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: .02em;
+}
+
+.announcement-level {
+  --level-tone: var(--state-thinking);
+  position: relative;
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 11px 13px 12px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--control-radius) + 6px);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease;
+}
+
+.announcement-level[data-level="important"] {
+  --level-tone: var(--state-approval);
+}
+
+.announcement-level[data-level="critical"] {
+  --level-tone: var(--state-error);
+}
+
+.announcement-level input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.announcement-level-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.announcement-level-name::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--level-tone);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--level-tone) 15%, transparent);
+}
+
+.announcement-level small {
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.6;
+}
+
+.announcement-level:has(input:checked) {
+  border-color: var(--level-tone);
+  background: color-mix(in srgb, var(--level-tone) 8%, var(--surface));
+}
+
+.announcement-level:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.announcement-preview {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 6px);
+  background: color-mix(in srgb, var(--surface-soft) 52%, var(--surface));
+}
+
+.announcement-preview-label {
+  margin: 0;
+  color: var(--muted);
+  font: 9px/1.7 var(--font-mono);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.announcement-preview-card {
+  --preview-tone: var(--state-thinking);
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 13px 14px 12px 17px;
+  border: 1px solid color-mix(in srgb, var(--preview-tone) 30%, var(--line));
+  border-radius: calc(var(--control-radius) + 6px);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.announcement-preview-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--preview-tone);
+}
+
+.announcement-preview[data-level="important"] .announcement-preview-card {
+  --preview-tone: var(--state-approval);
+}
+
+.announcement-preview[data-level="critical"] .announcement-preview-card {
+  --preview-tone: var(--state-error);
+}
+
+.announcement-preview-chip {
+  justify-self: start;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--preview-tone) 13%, var(--surface));
+  color: var(--preview-tone);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .06em;
+}
+
+.announcement-preview-card strong {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.announcement-preview-card p {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.announcement-preview-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+#previewLink {
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+
+.announcement-preview-button {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 10px;
+}
+
+.announcement-group {
+  display: grid;
+  gap: 8px;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 6px);
+  background: var(--surface);
+}
+
+.announcement-group h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+}
+
+.announcement-group > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.6;
+}
+
+.announcement-dialog .announcement-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--control-radius) + 6px);
+  background: color-mix(in srgb, var(--surface-soft) 46%, var(--surface));
+  color: var(--text);
+  cursor: pointer;
+}
+
+.announcement-toggle > span {
+  display: grid;
+  gap: 3px;
+}
+
+.announcement-toggle strong {
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.announcement-toggle small {
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.6;
+}
+
+.announcement-toggle input[type="checkbox"] {
+  position: relative;
+  flex: none;
+  width: 38px;
+  height: 22px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 10%, var(--surface));
+  appearance: none;
+  cursor: pointer;
+  transition: background .18s ease, border-color .18s ease;
+}
+
+.announcement-toggle input[type="checkbox"]::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--text) 22%, transparent);
+  transition: transform .18s ease;
+}
+
+.announcement-toggle input[type="checkbox"]:checked {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.announcement-toggle input[type="checkbox"]:checked::after {
+  transform: translateX(16px);
+  background: var(--accent-text);
+}
+
+.announcement-dialog-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 26px;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface-soft) 55%, var(--surface));
+}
+
+#announcementError {
+  margin: 0;
+  color: var(--state-error);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+#announcementError:empty {
+  display: none;
+}
+
+.announcement-dialog-foot .dialog-actions {
+  margin: 0 0 0 auto;
+}
+
+@media (max-width: 1180px) {
+  .announcement-dialog-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .announcement-form-side {
+    padding-top: 18px;
+    padding-left: 0;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .announcement-admin-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .announcement-admin-tools {
+    justify-content: flex-start;
+  }
+
+  .announcement-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #announcementDialog.announcement-dialog {
+    width: calc(100vw - 24px);
+  }
+}
+
+@media (max-width: 640px) {
+  .announcement-admin-intro h2 {
+    font-size: 23px;
+  }
+
+  .announcement-admin-tools {
+    width: 100%;
+  }
+
+  .announcement-levels,
+  .announcement-field-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .announcement-dialog-head,
+  .announcement-dialog-body,
+  .announcement-dialog-foot {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .announcement-dialog-body {
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+
+  .announcement-dialog-foot {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .announcement-dialog-foot .dialog-actions {
+    justify-content: stretch;
+  }
+
+  .announcement-dialog-foot .dialog-actions button {
+    flex: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #announcementDialog[open] {
+    animation: none;
+  }
+
+  .announcement-card,
+  .announcement-level,
+  .announcement-toggle input[type="checkbox"],
+  .announcement-toggle input[type="checkbox"]::after {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .announcement-card,
+  .announcement-preview,
+  .announcement-group,
+  .announcement-level,
+  .announcement-levels legend + .announcement-level {
+    border-color: var(--line-strong);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   16. 官网下载卡片：版本与体积说明
+   -------------------------------------------------------------------------- */
+.public-site .download-card .download-meta {
+  grid-column: 2;
+  margin: 7px 0 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  color: var(--muted);
+}
+
+.public-site .download-card .download-meta + p {
+  margin-top: 14px;
+}
